@@ -1,5 +1,4 @@
 from collections import namedtuple
-import torch
 from torch.utils.data import Dataset, DataLoader
 from functools import reduce
 import bitstring
@@ -21,9 +20,9 @@ for c in co59l:
     co = ch[1].split(',')
     CO59[(int(co[0]), int(co[1]))] = ch[0]
 
-CharacterEntry = namedtuple('Character Entry', ['pil_image', 'label'])
+CharacterEntry = namedtuple('CharacterEntry', ['pil_image', 'label'])
 
-class etl2_dataset(Dataset):
+class Etl2Dataset(Dataset):
 
     def __init__(self):
         # files to item count
@@ -68,10 +67,10 @@ class etl2_dataset(Dataset):
                 )
 
     def __len__(self):
-        def sum_file_count(file_with_count, sum_so_far):
-            return file_with_count[1] + sum_so_far
+        def sum_file_count(sum_so_far, file_with_count):
+            return sum_so_far + file_with_count[1]
 
-        return reduce(sum_file_count, self.files)
+        return reduce(sum_file_count, self.files, 0)
 
     def __getitem__(self, idx):
         return self.entries[idx]
