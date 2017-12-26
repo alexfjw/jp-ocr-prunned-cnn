@@ -11,7 +11,7 @@ t56s = '0123456789[#@:>? ABCDEFGHI&.](<  JKLMNOPQR-$*);\'|/STUVWXYZ ,%="!'
 def T56(c):
     return t56s[c]
 
-with codecs.open('co59-utf8.txt', 'r', 'utf-8') as co59f:
+with codecs.open('data/co59-utf8.txt', 'r', 'utf-8') as co59f:
     co59t = co59f.read()
 
 co59l = co59t.split()
@@ -27,11 +27,11 @@ class etl2_dataset(Dataset):
 
     def __init__(self):
         # files to item count
-        self.files = [('ETL2/ETL2_1', 9056),
-                      ('ETL2/ETL2_2', 10480),
-                      ('ETL2/ETL2_3', 11360),
-                      ('ETL2/ETL2_4', 10480),
-                      ('ETL2/ETL2_5', 11420)
+        self.files = [('data/ETL2/ETL2_1', 9056),
+                      ('data/ETL2/ETL2_2', 10480),
+                      ('data/ETL2/ETL2_3', 11360),
+                      ('data/ETL2/ETL2_4', 10480),
+                      ('data/ETL2/ETL2_5', 11420)
                       ]
         self.entries = []
         self.save_entries_to_memory()
