@@ -1,5 +1,5 @@
 import torch
-from torch.nn import Module
+import torch.nn as nn
 import torch.optim
 from torch.optim import lr_scheduler
 from torch.autograd import Variable
@@ -15,7 +15,10 @@ from utils.model_selection import train_test_split_indices
 import argparse
 
 
-class JapaneseVGG16(Module):
+class JapaneseVGG16(nn.Module):
+    def __init__(self, num_classes: int):
+        super().__init__()
+
 
     def forward(self, *input):
         pass

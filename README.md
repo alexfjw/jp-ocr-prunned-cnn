@@ -4,4 +4,5 @@ required packages:
 1. pipy's bitstring
 2. numpy
 3. tqdm
+4. scikit-image (for binarization)
 
