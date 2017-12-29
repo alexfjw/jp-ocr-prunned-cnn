@@ -3,49 +3,62 @@ from torch.autograd import Variable
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler, BatchSampler
-from torchvision import models, transforms
+from torchvision import transforms
 from utils.model_selection import stratified_test_split
 from sklearn.metrics import f1_score
+from models.models import vgg_model, chinese_model
 import argparse
-import os, sys
+import sys
 import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision
 import tqdm
+import torch.backends.cudnn as cudnn
 
-etl2_transforms = {
+cudnn.benchmark = True
+
+transfer_learn_etl2_transforms = {
     'train': transforms.Compose([
         transforms.Resize(224),
-        transforms.Grayscale(num_output_channels=3), # duplicate the channels
+        transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
         transforms.Normalize((Etl2Dataset.mean, Etl2Dataset.mean, Etl2Dataset.mean),
                              (Etl2Dataset.std, Etl2Dataset.std, Etl2Dataset.std))
     ]),
     'test': transforms.Compose([
         transforms.Resize(224),
-        transforms.Grayscale(num_output_channels=3), # duplicate the channels
         transforms.ToTensor(),
         transforms.Normalize((Etl2Dataset.mean, Etl2Dataset.mean, Etl2Dataset.mean),
                              (Etl2Dataset.std, Etl2Dataset.std, Etl2Dataset.std))
     ])
 }
 
-etl9b_transforms = {
+transfer_learn_etl9b_transforms = {
     'train': transforms.Compose([
         transforms.Resize(224),
-        transforms.Grayscale(num_output_channels=3), # duplicate the channels
+        transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
         transforms.Normalize((Etl9bDataset.mean, Etl9bDataset.mean, Etl9bDataset.mean),
                              (Etl9bDataset.std, Etl9bDataset.std, Etl9bDataset.std))
     ]),
     'test': transforms.Compose([
         transforms.Resize(224),
-        transforms.Grayscale(num_output_channels=3), # duplicate the channels
+        transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
         transforms.Normalize((Etl9bDataset.mean, Etl9bDataset.mean, Etl9bDataset.mean),
                              (Etl9bDataset.std, Etl9bDataset.std, Etl9bDataset.std))
+    ])
+}
+
+chinese_transforms = {
+    'train': transforms.Compose([
+        transforms.Resize(96),
+        transforms.ToTensor(),
+    ]),
+    'test': transforms.Compose([
+        transforms.Resize(96),
+        transforms.ToTensor(),
     ])
 }
 
@@ -54,8 +67,8 @@ def get_etl2_dataloaders():
     """
     returns train & test dataloaders for etl2 dataset
     """
-    etl2 = Etl2Dataset(train_transforms=etl2_transforms['train'],
-                       test_transforms=etl2_transforms['test'])
+    etl2 = Etl2Dataset(train_transforms=transfer_learn_etl2_transforms['train'],
+                       test_transforms=transfer_learn_etl2_transforms['test'])
     train_indices, val_indices, test_indices, _, _, _ = \
         stratified_test_split(etl2, test_size=0.2, val_size=0.2)
 
@@ -89,7 +102,7 @@ def train_model(model, dataloaders):
     scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
     criterion = nn.CrossEntropyLoss()
 
-    num_epochs=25
+    num_epochs = 30
 
     print()
 
@@ -128,7 +141,6 @@ def train_model(model, dataloaders):
                     labels = Variable(labels.cuda(), volatile=is_val)
                 else:
                     inputs, labels = Variable(inputs), Variable(labels)
-
 
                 # Zero the parameter gradients
                 optimizer.zero_grad()
@@ -194,25 +206,6 @@ def get_args():
     return parser.parse_args()
 
 
-def vgg_model(num_classes):
-    model = models.vgg16(True)
-    model.classifier = nn.Sequential(
-        nn.Linear(512 * 7 * 7, 4096),
-        nn.ReLU(True),
-        nn.Dropout(),
-        nn.Linear(4096, 4096),
-        nn.ReLU(True),
-        nn.Dropout(),
-        nn.Linear(4096, num_classes),
-    )
-    return model
-
-
-def custom_model(num_classes):
-    # TODO: add custom model
-    pass
-
-
 def main():
     args = get_args()
 
@@ -220,9 +213,10 @@ def main():
 
     if args.train:
         model = vgg_model(num_classes) if args.model == "vgg16" \
-            else custom_model(num_classes)
+            else chinese_model(num_classes)
         model = train_model(model, data_loaders)
         torch.save(model, 'models/vgg16_etl2')
+
 
 if __name__ == '__main__':
     sys.exit(main())

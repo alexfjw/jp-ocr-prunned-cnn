@@ -36,8 +36,8 @@ class Etl2Dataset(Dataset):
     images without transform are in greyscale
     mean & std are single channel, and calculated in advance
     """
-    mean = 43.87300058377132
-    std = 11.3157826035
+    mean = 29.9074215166
+    std = 65.5108579121
     # manually determined by adding into a set, see etl2_dataset_test.py
 
     def __init__(self, train_transforms=None, test_transforms=None):
@@ -97,12 +97,13 @@ class Etl2Dataset(Dataset):
 
                     # image is grayscale, use otsu's algorithm to binarize it
                     pil_image = Image.frombytes('F', image_size, item_data[16], 'bit', bits_per_pixel)
-                    np_image = np.array(pil_image)
-                    global_threshold = filters.threshold_otsu(np_image)
-                    binarized_image = np_image > global_threshold
+                    pil_image = pil_image.convert('RGB')
+                    # np_image = np.array(pil_image)
+                    # global_threshold = filters.threshold_otsu(np_image)
+                    # binarized_image = np_image > global_threshold
                     # fromarray '1' is buggy, convert array to 0 & 255 uint8,
                     # then build image with PIL as 'L' & convert to '1'
-                    pil_image = Image.fromarray((binarized_image * 255).astype(np.uint8), mode='L')
+                    # pil_image = Image.fromarray((binarized_image * 255).astype(np.uint8), mode='L')
 
                     entries.append(
                         CharacterEntry(pil_image=pil_image,
@@ -113,6 +114,12 @@ class Etl2Dataset(Dataset):
             file_handler = open(file_name, 'wb')
             pickle.dump(entries, file_handler)
             return entries
+
+    def calculate_mean(self):
+        return np.mean([ImageStat.Stat(image).mean[0] for image, _ in self.entries])
+
+    def calculate_std(self):
+        return np.mean([ImageStat.Stat(image).stddev[0] for image, _ in self.entries])
 
     def __len__(self):
         def sum_file_count(sum_so_far, file_with_count):

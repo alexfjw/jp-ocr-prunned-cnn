@@ -9,7 +9,7 @@ etl2[len(etl2) - 1]
 
 # print a character
 first_image, first_label = etl2[0]
-print_utf8(first_label)
+# print_utf8(first_label)
 
 # display the image
 first_image.show()
@@ -25,7 +25,7 @@ for character_entry in etl2:
 print(len(character_set))
 
 # print mean
-# print('mean: ', etl2.mean)
+print('mean: ', etl2.mean())
 
 # print std
-# print('std: ', etl2.std())
+print('std: ', etl2.std())
