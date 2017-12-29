@@ -63,9 +63,14 @@ class Etl2Dataset(Dataset):
     def load_entries_to_memory(self):
         file_name = 'data/etl2_entries.obj'
         try:
-            file_handler = open(file_name, 'r')
-            return pickle.load(file_handler)
+            file_handler = open(file_name, 'rb')
+            entries = pickle.load(file_handler)
+            print('restored pickled etl2 data')
+            return entries
+
         except:
+            print('processing raw etl2 data')
+            entries = []
             image_size = (60, 60)
             bits_per_pixel = 6
             for file_directory, num_items in self.files:
@@ -99,14 +104,13 @@ class Etl2Dataset(Dataset):
                     # then build image with PIL as 'L' & convert to '1'
                     pil_image = Image.fromarray((binarized_image * 255).astype(np.uint8), mode='L')
 
-                    self.entries.append(
+                    entries.append(
                         CharacterEntry(pil_image=pil_image,
                                        label=label)
                     )
 
             # save the data to file so we don't have to load it again
-            file_handler = open(file_name, 'w')
-            entries = {}
+            file_handler = open(file_name, 'wb')
             pickle.dump(entries, file_handler)
             return entries
 

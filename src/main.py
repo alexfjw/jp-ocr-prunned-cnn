@@ -4,7 +4,7 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler, BatchSampler
 from torchvision import models, transforms
-from utils.model_selection import train_test_split_indices
+from utils.model_selection import stratified_test_split
 from sklearn.metrics import f1_score
 import argparse
 import os, sys
@@ -56,10 +56,8 @@ def get_etl2_dataloaders():
     """
     etl2 = Etl2Dataset(train_transforms=etl2_transforms['train'],
                        test_transforms=etl2_transforms['test'])
-    train_indices, test_indices = train_test_split_indices(etl2, 0.2)
-    # use half the test indices for validation
-    val_indices = test_indices[:len(test_indices)//2]
-    test_indices = test_indices[len(test_indices)//2:]
+    train_indices, val_indices, test_indices, _, _, _ = \
+        stratified_test_split(etl2, test_size=0.2, val_size=0.2)
 
     train_dataloader = DataLoader(etl2,
                                   batch_sampler=BatchSampler(SubsetRandomSampler(train_indices), 32, False),
@@ -71,10 +69,14 @@ def get_etl2_dataloaders():
                                  batch_sampler=BatchSampler(SubsetRandomSampler(test_indices), 32, False),
                                  num_workers=2)
 
-    return {'train': train_dataloader, 'val': val_dataloader, 'test': test_dataloader},\
-           etl2.num_classes
+    return {'train': train_dataloader,
+            'val': val_dataloader,
+            'test': test_dataloader}, len(etl2.classes)
+
 
 def train_model(model, dataloaders):
+    print('training model:', model)
+
     # Checks if GPU is available
     use_gpu = torch.cuda.is_available()
     since = time.time()
@@ -94,6 +96,7 @@ def train_model(model, dataloaders):
     for epoch in range(num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
+        epoch_start = time.time()
 
         # Train and validate for each epoch
         for phase in ['train', 'val']:
@@ -107,28 +110,32 @@ def train_model(model, dataloaders):
 
             # Keeps track of epoch loss, labels vs predictions
             running_loss = 0.0
+
             running_labels = torch.LongTensor()
             running_predictions = torch.LongTensor()
 
+            if use_gpu:
+                model = model.cuda()
+
             # Iterate data using dataloaders
-            for data in dataloader:
+            for data in tqdm.tqdm(dataloader):
                 inputs, labels = data
-                print(inputs)
-                print(labels)
 
                 # Wrap inputs and labels in Variables
                 if use_gpu:
-                    inputs = Variable(inputs).cuda()
-                    labels = Variable(labels).cuda()
+                    is_val = phase == 'val'
+                    inputs = Variable(inputs.cuda(), volatile=is_val)
+                    labels = Variable(labels.cuda(), volatile=is_val)
                 else:
                     inputs, labels = Variable(inputs), Variable(labels)
+
 
                 # Zero the parameter gradients
                 optimizer.zero_grad()
 
                 # Forward and loss calculation
                 outputs = model(inputs)
-                _, preds = torch.max(outputs.data)
+                _, pred_indices = torch.max(outputs.data, 1)
                 loss = criterion(outputs, labels)
 
                 # Backward and optimize if in training phase
@@ -137,8 +144,10 @@ def train_model(model, dataloaders):
                     optimizer.step()
 
                 running_loss += loss.data[0]
-                running_labels = torch.cat((running_labels, labels.data), 0)
-                running_predictions = torch.cat((running_predictions, preds), 0)
+                running_labels = torch.cat((running_labels, labels.data.cpu()), 0)
+                running_predictions = torch.cat((running_predictions, pred_indices.cpu()), 0)
+
+                del inputs, labels
 
             loader_size = len(dataloader.batch_sampler.sampler)
             epoch_loss = running_loss / loader_size
@@ -153,6 +162,10 @@ def train_model(model, dataloaders):
             if phase == 'val' and epoch_f1 > best_f1:
                 best_f1 = epoch_f1
                 best_model_wts = model.state_dict()
+
+        epoch_elapsed = time.time() - epoch_start
+        print('Epoch {} took in {:.0f}m {:.0f}s'.format(
+            epoch, epoch_elapsed // 60, epoch_elapsed % 60))
         print()
 
     # Compute total time
@@ -209,7 +222,7 @@ def main():
         model = vgg_model(num_classes) if args.model == "vgg16" \
             else custom_model(num_classes)
         model = train_model(model, data_loaders)
-        torch.save(model, 'vgg16_etl2')
+        torch.save(model, 'models/vgg16_etl2')
 
 if __name__ == '__main__':
     sys.exit(main())
