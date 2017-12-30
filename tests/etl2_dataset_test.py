@@ -25,7 +25,7 @@ for character_entry in etl2:
 print(len(character_set))
 
 # print mean
-print('mean: ', etl2.mean())
+print('mean: ', etl2.calculate_mean())
 
 # print std
-print('std: ', etl2.std())
+print('std: ', etl2.calculate_std())

@@ -4,6 +4,7 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler, BatchSampler
 from torchvision import transforms
+import utils.transforms
 from utils.model_selection import stratified_test_split
 from sklearn.metrics import f1_score
 from models.models import vgg_model, chinese_model
@@ -18,11 +19,13 @@ import torch.backends.cudnn as cudnn
 
 cudnn.benchmark = True
 
+# ToFloat is required for normalization, tensor may be of type int depending on pil mode
 transfer_learn_etl2_transforms = {
     'train': transforms.Compose([
         transforms.Resize(224),
         transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
+        utils.transforms.ToFloat,
         transforms.Normalize((Etl2Dataset.mean, Etl2Dataset.mean, Etl2Dataset.mean),
                              (Etl2Dataset.std, Etl2Dataset.std, Etl2Dataset.std))
     ]),
@@ -30,6 +33,7 @@ transfer_learn_etl2_transforms = {
         transforms.Resize(224),
         transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
+        utils.transforms.ToFloat,
         transforms.Normalize((Etl2Dataset.mean, Etl2Dataset.mean, Etl2Dataset.mean),
                              (Etl2Dataset.std, Etl2Dataset.std, Etl2Dataset.std))
     ])
@@ -40,6 +44,7 @@ transfer_learn_etl9b_transforms = {
         transforms.Resize(224),
         transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
+        utils.transforms.ToFloat,
         transforms.Normalize((Etl9bDataset.mean, Etl9bDataset.mean, Etl9bDataset.mean),
                              (Etl9bDataset.std, Etl9bDataset.std, Etl9bDataset.std))
     ]),
@@ -47,33 +52,36 @@ transfer_learn_etl9b_transforms = {
         transforms.Resize(224),
         transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
+        utils.transforms.ToFloat,
         transforms.Normalize((Etl9bDataset.mean, Etl9bDataset.mean, Etl9bDataset.mean),
                              (Etl9bDataset.std, Etl9bDataset.std, Etl9bDataset.std))
     ])
 }
 
-chinese_transforms = {
+chinese_transforms_etl2 = {
     'train': transforms.Compose([
         transforms.Resize(96),
         transforms.ToTensor(),
-        transforms.Normalize((Etl2Dataset.mean, Etl2Dataset.mean, Etl2Dataset.mean),
-                             (Etl2Dataset.std, Etl2Dataset.std, Etl2Dataset.std))
+        utils.transforms.ToFloat,
+        transforms.Normalize([Etl2Dataset.mean], [Etl2Dataset.std])
     ]),
     'test': transforms.Compose([
         transforms.Resize(96),
         transforms.ToTensor(),
-        transforms.Normalize((Etl2Dataset.mean, Etl2Dataset.mean, Etl2Dataset.mean),
-                             (Etl2Dataset.std, Etl2Dataset.std, Etl2Dataset.std))
+        utils.transforms.ToFloat,
+        transforms.Normalize([Etl2Dataset.mean], [Etl2Dataset.std])
     ])
 }
 
 
-def get_etl2_dataloaders():
+def get_etl2_dataloaders(model_type):
     """
     returns train & test dataloaders for etl2 dataset
     """
-    etl2 = Etl2Dataset(train_transforms=transfer_learn_etl2_transforms['train'],
-                       test_transforms=transfer_learn_etl2_transforms['test'])
+    transform_group = transfer_learn_etl2_transforms if model_type == 'vgg' else chinese_transforms_etl2
+
+    etl2 = Etl2Dataset(train_transforms=transform_group['train'],
+                       test_transforms=transform_group['test'])
     train_indices, val_indices, test_indices, _, _, _ = \
         stratified_test_split(etl2, test_size=0.2, val_size=0.2)
 
@@ -217,7 +225,7 @@ def get_args():
 def main():
     args = get_args()
 
-    data_loaders, num_classes = get_etl2_dataloaders()
+    data_loaders, num_classes = get_etl2_dataloaders(args.model)
 
     if args.train:
         model, name = vgg_model(num_classes) if args.model == "vgg" \

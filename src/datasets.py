@@ -52,11 +52,11 @@ class Etl2Dataset(Dataset):
         self.train_transforms = train_transforms
         self.test_transforms = test_transforms
 
-        self.entries = self.load_entries_to_memory()
+        self._entries = self.load_entries_to_memory()
         self.classes, self.class_to_idx = self.load_class_data()
 
     def load_class_data(self):
-        classes = list({label for _, label in self.entries})
+        classes = list({label for _, label in self._entries})
         class_to_idx = {classes[i]: i for i in range(len(classes))}
         return classes, class_to_idx
 
@@ -97,7 +97,6 @@ class Etl2Dataset(Dataset):
 
                     # image is grayscale, use otsu's algorithm to binarize it
                     pil_image = Image.frombytes('F', image_size, item_data[16], 'bit', bits_per_pixel)
-                    pil_image = pil_image.convert('RGB')
                     # np_image = np.array(pil_image)
                     # global_threshold = filters.threshold_otsu(np_image)
                     # binarized_image = np_image > global_threshold
@@ -116,10 +115,10 @@ class Etl2Dataset(Dataset):
             return entries
 
     def calculate_mean(self):
-        return np.mean([ImageStat.Stat(image).mean[0] for image, _ in self.entries])
+        return np.mean([ImageStat.Stat(image).mean[0] for image, _ in self._entries])
 
     def calculate_std(self):
-        return np.mean([ImageStat.Stat(image).stddev[0] for image, _ in self.entries])
+        return np.mean([ImageStat.Stat(image).stddev[0] for image, _ in self._entries])
 
     def __len__(self):
         def sum_file_count(sum_so_far, file_with_count):
@@ -128,8 +127,8 @@ class Etl2Dataset(Dataset):
         return reduce(sum_file_count, self.files, 0)
 
     def __getitem__(self, idx):
-        label = self.entries[idx].label
-        image = self.entries[idx].pil_image
+        label = self._entries[idx].label
+        image = self._entries[idx].pil_image
 
         if self.train and self.train_transforms:
             image = self.train_transforms(image)
@@ -146,7 +145,6 @@ class Etl9bDataset(Dataset):
     """
     mean = 63.243677227077974
     std = 16.8771143038
-    num_classes = 3036
 
     def __init__(self, train_transforms=None, test_transforms=None):
         # files to item count
@@ -156,7 +154,7 @@ class Etl9bDataset(Dataset):
                       ('data/ETL9B/ETL9B_4', 121440),
                       ('data/ETL9B/ETL9B_5', 121440+3036)
                       ]
-        self.entries = []
+        self._entries = []
         self.train = True
         self.train_transforms = train_transforms
         self.test_transforms = test_transforms
@@ -182,7 +180,7 @@ class Etl9bDataset(Dataset):
                     label = (b'\x1b$B' + bytes.fromhex(hex(r[1])[2:])).decode('iso2022_jp')
                     pil_image = Image.frombytes('1', image_size, r[3], 'raw')
 
-                    self.entries.append(
+                    self._entries.append(
                         CharacterEntry(pil_image=pil_image,
                                        label=label)
                     )
@@ -201,8 +199,8 @@ class Etl9bDataset(Dataset):
         return reduce(sum_file_count, self.files, 0)
 
     def __getitem__(self, idx):
-        label = self.entries[idx].label
-        image = self.entries[idx].pil_image
+        label = self._entries[idx].label
+        image = self._entries[idx].pil_image
 
         if self.train and self.train_transforms:
             image = self.train_transforms(image)
