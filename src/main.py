@@ -28,6 +28,7 @@ transfer_learn_etl2_transforms = {
     ]),
     'test': transforms.Compose([
         transforms.Resize(224),
+        transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
         transforms.Normalize((Etl2Dataset.mean, Etl2Dataset.mean, Etl2Dataset.mean),
                              (Etl2Dataset.std, Etl2Dataset.std, Etl2Dataset.std))
@@ -55,10 +56,14 @@ chinese_transforms = {
     'train': transforms.Compose([
         transforms.Resize(96),
         transforms.ToTensor(),
+        transforms.Normalize((Etl2Dataset.mean, Etl2Dataset.mean, Etl2Dataset.mean),
+                             (Etl2Dataset.std, Etl2Dataset.std, Etl2Dataset.std))
     ]),
     'test': transforms.Compose([
         transforms.Resize(96),
         transforms.ToTensor(),
+        transforms.Normalize((Etl2Dataset.mean, Etl2Dataset.mean, Etl2Dataset.mean),
+                             (Etl2Dataset.std, Etl2Dataset.std, Etl2Dataset.std))
     ])
 }
 
@@ -113,13 +118,16 @@ def train_model(model, dataloaders):
 
         # Train and validate for each epoch
         for phase in ['train', 'val']:
+            dataloader = dataloaders[phase]
+
             if phase == 'train':
-                scheduler.step()
+                dataloader.dataset.train = True
                 model.train(True)
+                scheduler.step()
             else:
+                dataloader.dataset.train = False
                 model.train(False)
 
-            dataloader = dataloaders[phase]
 
             # Keeps track of epoch loss, labels vs predictions
             running_loss = 0.0
@@ -212,10 +220,15 @@ def main():
     data_loaders, num_classes = get_etl2_dataloaders()
 
     if args.train:
-        model = vgg_model(num_classes) if args.model == "vgg16" \
+        model, name = vgg_model(num_classes) if args.model == "vgg" \
             else chinese_model(num_classes)
         model = train_model(model, data_loaders)
-        torch.save(model, 'models/vgg16_etl2')
+        torch.save(model, f'models/{name}')
+    elif args.prune:
+        _, name = vgg_model(num_classes) if args.model == "vgg" \
+            else chinese_model(num_classes)
+        model = torch.load(f'models/{name}')
+
 
 
 if __name__ == '__main__':
