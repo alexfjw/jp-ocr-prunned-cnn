@@ -1,4 +1,4 @@
-from src.datasets import Etl2Dataset, Etl9bDataset
+from src.datasets import Etl2Dataset, Etl9GDataset, Etl_2_9G_Dataset
 from torch.autograd import Variable
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
@@ -39,22 +39,22 @@ transfer_learn_etl2_transforms = {
     ])
 }
 
-transfer_learn_etl9b_transforms = {
+transfer_learn_etl9g_transforms = {
     'train': transforms.Compose([
         transforms.Resize(224),
         transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
         utils.transforms.ToFloat,
-        transforms.Normalize((Etl9bDataset.mean, Etl9bDataset.mean, Etl9bDataset.mean),
-                             (Etl9bDataset.std, Etl9bDataset.std, Etl9bDataset.std))
+        transforms.Normalize((Etl9GDataset.mean, Etl9GDataset.mean, Etl9GDataset.mean),
+                             (Etl9GDataset.std, Etl9GDataset.std, Etl9GDataset.std))
     ]),
     'test': transforms.Compose([
         transforms.Resize(224),
         transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
         utils.transforms.ToFloat,
-        transforms.Normalize((Etl9bDataset.mean, Etl9bDataset.mean, Etl9bDataset.mean),
-                             (Etl9bDataset.std, Etl9bDataset.std, Etl9bDataset.std))
+        transforms.Normalize((Etl9GDataset.mean, Etl9GDataset.mean, Etl9GDataset.mean),
+                             (Etl9GDataset.std, Etl9GDataset.std, Etl9GDataset.std))
     ])
 }
 
@@ -73,6 +73,47 @@ chinese_transforms_etl2 = {
     ])
 }
 
+chinese_transforms_etl9g = {
+    'train': transforms.Compose([
+        transforms.Resize(96),
+        transforms.ToTensor(),
+        utils.transforms.ToFloat,
+        transforms.Normalize([Etl9GDataset.mean], [Etl9GDataset.std])
+    ]),
+    'test': transforms.Compose([
+        transforms.Resize(96),
+        transforms.ToTensor(),
+        utils.transforms.ToFloat,
+        transforms.Normalize([Etl9GDataset.mean], [Etl9GDataset.std])
+    ])
+}
+
+
+def get_etl2_9g_dataloaders(model_type):
+    """
+    returns train & test dataloaders for etl dataset
+    """
+    etl2_transforms = transfer_learn_etl2_transforms if model_type == 'vgg' else chinese_transforms_etl2
+    etl9_transforms = transfer_learn_etl9g_transforms if model_type == 'vgg' else chinese_transforms_etl9g
+
+    etl2_9g = Etl_2_9G_Dataset(etl2_transforms, etl9_transforms)
+    train_indices, val_indices, test_indices, _, _, _ = \
+        stratified_test_split(etl2_9g, test_size=0.2, val_size=0.2)
+
+    train_dataloader = DataLoader(etl2_9g,
+                                  batch_sampler=BatchSampler(SubsetRandomSampler(train_indices), 32, False),
+                                  num_workers=2)
+    val_dataloader = DataLoader(etl2_9g,
+                                batch_sampler=BatchSampler(SubsetRandomSampler(val_indices), 32, False),
+                                num_workers=2)
+    test_dataloader = DataLoader(etl2_9g,
+                                 batch_sampler=BatchSampler(SubsetRandomSampler(test_indices), 32, False),
+                                 num_workers=2)
+
+    return {'train': train_dataloader,
+            'val': val_dataloader,
+            'test': test_dataloader}, len(etl2_9g.label_encoder.classes_)
+
 
 def get_etl2_dataloaders(model_type):
     """
@@ -80,8 +121,8 @@ def get_etl2_dataloaders(model_type):
     """
     transform_group = transfer_learn_etl2_transforms if model_type == 'vgg' else chinese_transforms_etl2
 
-    etl2 = Etl2Dataset(train_transforms=transform_group['train'],
-                       test_transforms=transform_group['test'])
+    etl2 = Etl2Dataset(transform_group)
+
     train_indices, val_indices, test_indices, _, _, _ = \
         stratified_test_split(etl2, test_size=0.2, val_size=0.2)
 
@@ -97,7 +138,7 @@ def get_etl2_dataloaders(model_type):
 
     return {'train': train_dataloader,
             'val': val_dataloader,
-            'test': test_dataloader}, len(etl2.classes)
+            'test': test_dataloader}, len(etl2.label_encoder.classes_)
 
 
 def train_model(model, dataloaders):
@@ -115,7 +156,7 @@ def train_model(model, dataloaders):
     scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
     criterion = nn.CrossEntropyLoss()
 
-    num_epochs = 30
+    num_epochs = 25
 
     print()
 
@@ -197,6 +238,7 @@ def train_model(model, dataloaders):
         print()
 
     # Compute total time
+    since = time.time()
     time_elasped = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elasped // 60, time_elasped % 60))
@@ -212,8 +254,7 @@ def get_args():
     parser.add_argument('--train', dest='train', action='store_true')
     parser.add_argument('--prune', dest='prune', action='store_true')
     parser.add_argument('--model')
-    parser.add_argument('--etl2', dest='etl2')
-    parser.add_argument('--etl2_9b', dest='etl2_9b')
+    parser.add_argument('--dataset')
     parser.add_argument('--train_path', type=str, default='train')
     parser.add_argument('--test_path', type=str, default='prune')
     parser.set_defaults(train=False)
@@ -225,18 +266,20 @@ def get_args():
 def main():
     args = get_args()
 
-    data_loaders, num_classes = get_etl2_dataloaders(args.model)
+    data_loaders, num_classes = \
+        get_etl2_dataloaders(args.model) if args.dataset == 'etl2' \
+        else get_etl2_9g_dataloaders(args.model)
 
     if args.train:
-        model, name = vgg_model(num_classes) if args.model == "vgg" \
+        model, name = \
+            vgg_model(num_classes) if args.model == "vgg" \
             else chinese_model(num_classes)
         model = train_model(model, data_loaders)
-        torch.save(model, f'models/{name}')
+        torch.save(model, f'models/{args.model}_{args.dataset}')
     elif args.prune:
         _, name = vgg_model(num_classes) if args.model == "vgg" \
             else chinese_model(num_classes)
-        model = torch.load(f'models/{name}')
-
+        model = torch.load(f'models/{args.model}_{args.dataset}')
 
 
 if __name__ == '__main__':

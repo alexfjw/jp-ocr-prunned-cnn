@@ -1,35 +1,18 @@
 from collections import namedtuple
 from torch.utils.data import Dataset
+from sklearn import preprocessing
 from functools import reduce
 import bitstring
 import codecs
 import struct
 import pickle
-import skimage.filters as filters
+import os
+import time
+from pathlib import Path
 import numpy as np
 from PIL import Image, ImageStat
 
-# code for extracting data from files
-# refer to http://etlcdb.db.aist.go.jp/?page_id=1721
-t56s = '0123456789[#@:>? ABCDEFGHI&.](<  JKLMNOPQR-$*);\'|/STUVWXYZ ,%="!'
-
-
-def T56(c):
-    return t56s[c]
-
-
-with codecs.open('data/co59-utf8.txt', 'r', 'utf-8') as co59f:
-    co59t = co59f.read()
-
-co59l = co59t.split()
-CO59 = {}
-for c in co59l:
-    ch = c.split(':')
-    co = ch[1].split(',')
-    CO59[(int(co[0]), int(co[1]))] = ch[0]
-
 CharacterEntry = namedtuple('CharacterEntry', ['pil_image', 'label'])
-
 
 class Etl2Dataset(Dataset):
     """
@@ -39,6 +22,23 @@ class Etl2Dataset(Dataset):
     mean = 29.9074215166
     std = 65.5108579121
     # manually determined by adding into a set, see etl2_dataset_test.py
+
+    # code for extracting data from files
+    # refer to http://etlcdb.db.aist.go.jp/?page_id=1721
+    t56s = '0123456789[#@:>? ABCDEFGHI&.](<  JKLMNOPQR-$*);\'|/STUVWXYZ ,%="!'
+
+    def T56(c):
+        return Etl2Dataset.t56s[c]
+
+    with codecs.open('data/co59-utf8.txt', 'r', 'utf-8') as co59f:
+        co59t = co59f.read()
+
+    co59l = co59t.split()
+    CO59 = {}
+    for c in co59l:
+        ch = c.split(':')
+        co = ch[1].split(',')
+        CO59[(int(co[0]), int(co[1]))] = ch[0]
 
     def __init__(self, train_transforms=None, test_transforms=None):
         # files to item count
@@ -53,12 +53,12 @@ class Etl2Dataset(Dataset):
         self.test_transforms = test_transforms
 
         self._entries = self.load_entries_to_memory()
-        self.classes, self.class_to_idx = self.load_class_data()
+        self.label_encoder = self.load_class_data()
 
     def load_class_data(self):
-        classes = list({label for _, label in self._entries})
-        class_to_idx = {classes[i]: i for i in range(len(classes))}
-        return classes, class_to_idx
+        le = preprocessing.LabelEncoder()
+        le.fit([label for _, label in self._entries])
+        return le
 
     def load_entries_to_memory(self):
         file_name = 'data/etl2_entries.obj'
@@ -93,7 +93,7 @@ class Etl2Dataset(Dataset):
                     # print item_data[0], T56(r[1]), "".join(map(T56, item_data[2:8])), "".join(map(T56, r[8:14])), CO59[tuple(r[14:16])])
 
                     # save only the label & image
-                    label = CO59[tuple(item_data[14:16])]
+                    label = Etl2Dataset.CO59[tuple(item_data[14:16])]
 
                     # image is grayscale, use otsu's algorithm to binarize it
                     pil_image = Image.frombytes('F', image_size, item_data[16], 'bit', bits_per_pixel)
@@ -128,83 +128,113 @@ class Etl2Dataset(Dataset):
 
     def __getitem__(self, idx):
         label = self._entries[idx].label
-        image = self._entries[idx].pil_image
+        image = self._entries[idx].pil_image.convert('I')
 
         if self.train and self.train_transforms:
             image = self.train_transforms(image)
         elif not self.train and self.test_transforms:
             image = self.test_transforms(image)
 
-        return image, self.class_to_idx[label]
+        return image, self.label_encoder.transform([label])[0]
 
 
-class Etl9bDataset(Dataset):
+class Etl9GDataset(Dataset):
     """
     images without transform are in greyscale
     mean & std are single channel, and calculated in advance
     """
-    mean = 63.243677227077974
-    std = 16.8771143038
+    mean = 11.3169761515
+    std = 39.1004076498
 
     def __init__(self, train_transforms=None, test_transforms=None):
         # files to item count
-        self.files = [('data/ETL9B/ETL9B_1', 121440),
-                      ('data/ETL9B/ETL9B_2', 121440),
-                      ('data/ETL9B/ETL9B_3', 121440),
-                      ('data/ETL9B/ETL9B_4', 121440),
-                      ('data/ETL9B/ETL9B_5', 121440+3036)
-                      ]
-        self._entries = []
+        self.files_directory = 'data/ETL9G'
         self.train = True
         self.train_transforms = train_transforms
         self.test_transforms = test_transforms
 
-        self.load_entries_to_memory()
-        # TODO: pickle me
+        self._entries = self.load_entries_to_memory()
+        self.label_encoder = self.load_class_data()
+
+    def load_class_data(self):
+        le = preprocessing.LabelEncoder()
+        le.fit([label for _, label in self._entries])
+        return le
 
     def load_entries_to_memory(self):
-        image_size = (64, 63)
-        record_size = 576
+        print('processing raw etl9g data')
+        # don't bother pickling, size is about 4gb, and takes about as long as reading each file
 
-        for file_directory, num_items in self.files:
+        image_size = (128, 127)
+        record_size = 8199
+        items_per_file = 12144
+        entries = []
 
-            with open(file_directory, mode='rb') as f:
-                for item_index in range(num_items):
+        for file_path in [path for path in Path(self.files_directory).iterdir()]:
+            with open(file_path, mode='rb') as f:
+                for item_index in range(items_per_file):
                     # 0 is a dummy item, shift all by 1
-                    f.seek((item_index+1) * record_size)
+                    f.seek(item_index * record_size)
                     s = f.read(record_size)
-                    r = struct.unpack('>2H4s504s64x', s)
+                    r = struct.unpack('>2H8sI4B4H2B34x8128s7x', s)
                     # refer to https://stackoverflow.com/questions/25134722/convert-shift-jis-to-utf-8
                     # to find out how to get unicode from the shiftjis hexcode
                     # iso2022 is has an escape sequence prefix, '\x1b$B'
                     label = (b'\x1b$B' + bytes.fromhex(hex(r[1])[2:])).decode('iso2022_jp')
-                    pil_image = Image.frombytes('1', image_size, r[3], 'raw')
+                    pil_image = Image.frombytes('F', image_size, r[14], 'bit', 4)
 
-                    self._entries.append(
+                    entries.append(
                         CharacterEntry(pil_image=pil_image,
                                        label=label)
                     )
 
-    # image_stats = ImageStat.Stat(pil_image)
-    # item_count = item_index + 1
-    # # cumulative moving average
-    # self.mean = self.mean + (image_stats.mean[0] - self.mean)/item_count
-    # self.mean2 = self.mean2 + (np.square(image_stats.mean[0]) - self.mean2)/item_count
+        return entries
 
+    def calculate_mean(self):
+        return np.mean([ImageStat.Stat(image).mean[0] for image, _ in self._entries])
+
+    def calculate_std(self):
+        return np.mean([ImageStat.Stat(image).stddev[0] for image, _ in self._entries])
 
     def __len__(self):
-        def sum_file_count(sum_so_far, file_with_count):
-            return sum_so_far + file_with_count[1]
-
-        return reduce(sum_file_count, self.files, 0)
+        return len(self._entries)
 
     def __getitem__(self, idx):
         label = self._entries[idx].label
-        image = self._entries[idx].pil_image
+        image = self._entries[idx].pil_image.convert('I')
 
         if self.train and self.train_transforms:
             image = self.train_transforms(image)
         elif not self.train and self.test_transforms:
             image = self.test_transforms(image)
 
-        return image, label
+        return image, self.label_encoder.transform([label])[0]
+
+
+class Etl_2_9G_Dataset(Dataset):
+
+    def __init__(self, etl2_transforms=None, etl9g_transforms=None):
+        self.etl2 = Etl2Dataset(etl2_transforms['train'], etl2_transforms['test'])
+        self.etl9g = Etl9GDataset(etl9g_transforms['train'], etl9g_transforms['test'])
+        self.label_encoder = self.load_class_data()
+
+    def load_class_data(self):
+        classes = list(set(self.etl2.label_encoder.classes_)
+                       | set(self.etl9g.label_encoder.classes_))
+
+        le = preprocessing.LabelEncoder()
+        le.fit(classes)
+        return le
+
+    def __len__(self):
+        return len(self.etl2) + len(self.etl9g)
+
+    def __getitem__(self, idx):
+        if idx < len(self.etl2):
+            img, old_label_idx = self.etl2[idx]
+            label = self.etl2.label_encoder.inverse_transform([old_label_idx])[0]
+            return img, self.label_encoder.transform([label])[0]
+        else:
+            img, old_label_idx = self.etl9g[idx - len(self.etl2)]
+            label = self.etl9g.label_encoder.inverse_transform([old_label_idx])[0]
+            return img, self.label_encoder.transform([label])[0]
