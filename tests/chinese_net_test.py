@@ -1,5 +1,4 @@
-from models.models import ChineseNet
-import torch.nn as nn
+from src.models import ChineseNet
 import torch.autograd
 
 model = ChineseNet(3).cuda()
