@@ -36,20 +36,51 @@ class PConv2d(nn.Conv2d):
         self.__recent_activations = None
 
     def prune_feature_map(self, map_index):
-        pass
+        self.weight = self.weight.cuda()
+
+        num_feature_maps, *others = self.weight.size()
+        temp = nn.Parameter(torch.Tensor(num_feature_maps - 1, *others)).cuda()
+        temp[:map_index, :, :, :] = self.weight[:map_index, :, :, :]
+        temp[map_index:, :, :, :] = self.weight[map_index+1:, :, :, :]
+        del self.weight
+        self.weight = temp
+        self.out_channels -= 1
 
     def drop_input_channel(self, index):
         """
-        Used when a previous conv net was prunned, reducing input channel count
+        Use when a convnet earlier in the chain is prunned. Reduces input channel count
         :param index:
         :return:
         """
-        pass
+        self.weight = self.weight.cuda()
+
+        num_feature_maps, channels, *kernel_size = self.weight.size()
+        temp = nn.Parameter(torch.Tensor(num_feature_maps, channels-1, *kernel_size)).cuda()
+        temp[:, :index, :, :] = self.weight[:, :index, :, :]
+        temp[:, index:, :, :] = self.weight[:, index+1:, :, :]
+        del self.weight
+        self.weight = temp
+        self.in_channels -= 1
 
 
 class PBatchNorm2d(nn.BatchNorm2d):
-    # TODO
-    pass
+
+    def drop_input_channel(self, index):
+        self.num_features -= 1
+
+        if self.affine:
+            self.weight = self.weight.cuda()
+            new_weight = nn.Parameter(torch.Tensor(self.num_features)).cuda()
+            new_bias = nn.Parameter(torch.Tensor(self.num_features)).cuda()
+
+            new_weight[:index] = self.weight[:index]
+            new_weight[index:] = self.weight[index+1:]
+            new_bias[:index] = self.weight[:index]
+            new_bias[index:] = self.weight[index+1:]
+
+            del self.weight, self.bias
+            self.weight = new_weight
+            self.bias = new_bias
 
 
 
