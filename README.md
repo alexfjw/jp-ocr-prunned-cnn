@@ -7,7 +7,7 @@ required packages:
 4. pytorch(0.4), torchvision
 5. sklearn
 
-refer to capstone proposal for a rough idea of this project
+WIP, refer to capstone proposal for a rough idea of this project
 
 
 
