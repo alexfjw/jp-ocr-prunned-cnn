@@ -55,4 +55,8 @@ class ChineseNet(nn.Module):
         return x
 
 
-
+def make_prunable(self, cnn: nn.Module):
+    # TODO: make network prunable
+    # swap out non prunable components with prunable
+    # replace layers with prunable layers
+    pass
