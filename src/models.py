@@ -19,7 +19,7 @@ def vgg_model(num_classes):
 
 
 def chinese_model(num_classes):
-        return ChineseNet(num_classes), 'chinese_net'
+    return ChineseNet(num_classes), 'chinese_net'
 
 
 class ChineseNet(nn.Module):
