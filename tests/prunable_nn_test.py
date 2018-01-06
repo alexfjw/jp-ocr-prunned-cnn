@@ -61,23 +61,56 @@ class TestPrunableConv2d(unittest.TestCase):
     def test_drop_input_channel(self):
         dropped_index = 0
 
-        old_weight_size = self.module.weight.size()
-        old_in_channels = self.module.in_channels
         old_weight_values = self.module.weight.data.cpu().numpy()
 
         # ensure that the chosen index is dropped
         self.module.drop_input_channel(dropped_index)
-        expected = np.delete(old_weight_values, dropped_index , 1)
+        expected = np.delete(old_weight_values, dropped_index, 1)
         self.assertTrue(np.array_equal(self.module.weight.data.cpu().numpy(), expected))
 
 
 class TestDropInputClasses(unittest.TestCase):
 
     def test_PLinear(self):
-        pass
+        dropped_index = 0
 
-    def test_PBatchNorm2d(self):
-        pass
+        # assume input is 2x2x2, 2 layers of 2x2
+        input_shape = (2, 2, 2)
+        module = pnn.PLinear(8, 10)
+
+        old_num_features = module.in_features
+        old_weight = module.weight.data.cpu().numpy()
+        resized_old_weight = np.resize(old_weight, (module.out_features, *input_shape))
+
+        module.drop_inputs(input_shape, dropped_index)
+        new_shape = module.weight.size()
+
+        # ensure that the chosen index is dropped
+        expected_weight = np.resize(np.delete(resized_old_weight, dropped_index, 1), new_shape)
+        output = module.weight.data.cpu().numpy()
+        self.assertTrue(np.array_equal(output, expected_weight))
+
+        # ensure num features is reduced
+        self.assertTrue(module.in_features, old_num_features-1)
+
+
+    def test_PBatchNorm1d(self):
+        dropped_index = 0
+        module = pnn.PBatchNorm1d(2)
+
+        old_num_features = module.num_features
+        old_bias = module.bias.data.cpu().numpy()
+        old_weight = module.weight.data.cpu().numpy()
+
+        module.drop_input_channel(dropped_index)
+
+        # ensure that the chosen index is dropped
+        expected_weight = np.delete(old_weight, dropped_index, 0)
+        self.assertTrue(np.array_equal(module.weight.data.cpu().numpy(), expected_weight))
+        expected_bias = np.delete(old_bias, dropped_index, 0)
+        self.assertTrue(np.array_equal(module.bias.data.cpu().numpy(), expected_bias))
+        # ensure num features is reduced
+        self.assertTrue(module.num_features, old_num_features-1)
 
 
 if __name__ == '__main__':

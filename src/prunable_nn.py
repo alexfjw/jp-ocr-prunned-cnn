@@ -38,9 +38,10 @@ class PConv2d(nn.Conv2d):
         self.__recent_activations = None
 
     def prune_feature_map(self, map_index):
-        self.cuda()
+        is_cuda = self.weight.is_cuda
 
-        indices = Variable(torch.LongTensor([i for i in range(self.out_channels) if i != map_index])).cuda()
+        indices = Variable(torch.LongTensor([i for i in range(self.out_channels) if i != map_index]))
+        indices = indices.cuda() if is_cuda else indices
 
         self.weight = nn.Parameter(self.weight.index_select(0, indices).data)
         self.bias = nn.Parameter(self.bias.index_select(0, indices).data)
@@ -52,14 +53,18 @@ class PConv2d(nn.Conv2d):
         :param index:
         :return:
         """
-        indices = Variable(torch.LongTensor([i for i in range(self.in_channels) if i != index])).cuda()
+        is_cuda = self.weight.is_cuda
+
+        indices = Variable(torch.LongTensor([i for i in range(self.in_channels) if i != index]))
+        indices = indices.cuda() if is_cuda else indices
+
         self.weight = nn.Parameter(self.weight.index_select(1, indices).data)
         self.in_channels -= 1
 
 
 class PLinear(nn.Linear):
 
-    def drop_inputs(self, input_shape, dim, index):
+    def drop_inputs(self, input_shape, index, dim=0):
         """
         Previous layer is expected to be a convnet which just underwent pruning
         Drop cells connected to the pruned layer of the convnet
@@ -68,19 +73,28 @@ class PLinear(nn.Linear):
         :param index: index to drop
         :return:
         """
-        reshaped = self.weight.view(self.out_features, input_shape)
-        dim_length = input_shape.size()[dim]
-        indices = Variable(torch.LongTensor([i for i in range(dim_length) if i != index])).cuda()
-        self.weight = nn.Parameter(reshaped.index_select(dim+1, indices).data) \
-                        .view(self.out_features, -1)
+        is_cuda = self.weight.is_cuda
+
+        reshaped = self.weight.view(-1, *input_shape)
+        dim_length = input_shape[dim]
+        indices = Variable(torch.LongTensor([i for i in range(dim_length) if i != index]))
+        indices = indices.cuda() if is_cuda else indices
+
+        self.weight = nn.Parameter(
+            reshaped.index_select(dim+1, indices)
+                .data
+                .view(self.out_features, -1)
+        )
         self.in_features = self.weight.size()[1]
 
 
-class PBatchNorm2d(nn.BatchNorm2d):
+class PBatchNorm1d(nn.BatchNorm1d):
 
     def drop_input_channel(self, index):
         if self.affine:
-            indices = Variable(torch.LongTensor([i for i in range(self.num_features) if i != index])).cuda()
+            is_cuda = self.weight.is_cuda
+            indices = Variable(torch.LongTensor([i for i in range(self.num_features) if i != index]))
+            indices = indices.cuda() if is_cuda else indices
 
             self.weight = nn.Parameter(self.weight.index_select(0, indices).data)
             self.bias = nn.Parameter(self.bias.index_select(0, indices).data)
