@@ -1,4 +1,5 @@
 import torch.nn as nn
+from torch.autograd import Variable
 import torch
 
 
@@ -37,12 +38,12 @@ class PConv2d(nn.Conv2d):
         self.__recent_activations = None
 
     def prune_feature_map(self, map_index):
-        self.weight = self.weight.cuda()
+        self.cuda()
 
-        indices = torch.LongTensor([i for i in range(self.out_channels) if i != map_index])
+        indices = Variable(torch.LongTensor([i for i in range(self.out_channels) if i != map_index])).cuda()
 
-        self.weight = self.weight.index_select(0, indices)
-        self.bias = self.bias.index_select(0, indices)
+        self.weight = nn.Parameter(self.weight.index_select(0, indices).data)
+        self.bias = nn.Parameter(self.bias.index_select(0, indices).data)
         self.out_channels -= 1
 
     def drop_input_channel(self, index):
@@ -51,8 +52,8 @@ class PConv2d(nn.Conv2d):
         :param index:
         :return:
         """
-        indices = torch.LongTensor([i for i in range(self.in_channels) if i != index])
-        self.weight = self.weight.index_select(1, indices)
+        indices = Variable(torch.LongTensor([i for i in range(self.in_channels) if i != index])).cuda()
+        self.weight = nn.Parameter(self.weight.index_select(1, indices).data)
         self.in_channels -= 1
 
 
@@ -69,9 +70,9 @@ class PLinear(nn.Linear):
         """
         reshaped = self.weight.view(self.out_features, input_shape)
         dim_length = input_shape.size()[dim]
-        indices = torch.LongTensor([i for i in range(dim_length) if i != index])
-        self.weight = reshaped.index_select(dim+1, indices) \
-                            .view(self.out_features, -1)
+        indices = Variable(torch.LongTensor([i for i in range(dim_length) if i != index])).cuda()
+        self.weight = nn.Parameter(reshaped.index_select(dim+1, indices).data) \
+                        .view(self.out_features, -1)
         self.in_features = self.weight.size()[1]
 
 
@@ -79,10 +80,10 @@ class PBatchNorm2d(nn.BatchNorm2d):
 
     def drop_input_channel(self, index):
         if self.affine:
-            indices = torch.LongTensor([i for i in range(self.num_features) if i != index])
+            indices = Variable(torch.LongTensor([i for i in range(self.num_features) if i != index])).cuda()
 
-            self.weight = self.weight.index_select(0, indices)
-            self.bias = self.bias.index_select(0, indices)
+            self.weight = nn.Parameter(self.weight.index_select(0, indices).data)
+            self.bias = nn.Parameter(self.bias.index_select(0, indices).data)
 
         self.num_features -= 1
 
