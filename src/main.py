@@ -9,6 +9,7 @@ import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from utils.full_model_to_weights import model_to_weights
 import tqdm
 import torch.backends.cudnn as cudnn
 
@@ -148,11 +149,11 @@ def main():
             vgg_model(num_classes) if args.model == "vgg" \
             else chinese_model(num_classes)
         model = train_model(model, data_loaders)
-        torch.save(model, f'models/{args.model}_{args.dataset}')
+        torch.save(model.state_dict(), f'models/{args.model}_{args.dataset}')
     elif args.prune:
         _, name = vgg_model(num_classes) if args.model == "vgg" \
             else chinese_model(num_classes)
-        model = torch.load(f'models/{args.model}_{args.dataset}')
+        #model = torch.load(f'models/{args.model}_{args.dataset}')
 
 
 if __name__ == '__main__':

@@ -2,7 +2,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler, BatchSampler
 from utils.model_selection import stratified_test_split
 from src.datasets import *
-import utils
+from utils.transforms import ToFloat
 from torchvision import transforms
 
 
@@ -64,7 +64,7 @@ transfer_learn_etl2_transforms = {
         transforms.Resize(224),
         transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
-        utils.transforms.ToFloat,
+        ToFloat,
         transforms.Normalize((Etl2Dataset.mean, Etl2Dataset.mean, Etl2Dataset.mean),
                              (Etl2Dataset.std, Etl2Dataset.std, Etl2Dataset.std))
     ]),
@@ -72,7 +72,7 @@ transfer_learn_etl2_transforms = {
         transforms.Resize(224),
         transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
-        utils.transforms.ToFloat,
+        ToFloat,
         transforms.Normalize((Etl2Dataset.mean, Etl2Dataset.mean, Etl2Dataset.mean),
                              (Etl2Dataset.std, Etl2Dataset.std, Etl2Dataset.std))
     ])
@@ -83,7 +83,7 @@ transfer_learn_etl9g_transforms = {
         transforms.Resize(224),
         transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
-        utils.transforms.ToFloat,
+        ToFloat,
         transforms.Normalize((Etl9GDataset.mean, Etl9GDataset.mean, Etl9GDataset.mean),
                              (Etl9GDataset.std, Etl9GDataset.std, Etl9GDataset.std))
     ]),
@@ -91,7 +91,7 @@ transfer_learn_etl9g_transforms = {
         transforms.Resize(224),
         transforms.Grayscale(num_output_channels=3),  # duplicate the channels
         transforms.ToTensor(),
-        utils.transforms.ToFloat,
+        ToFloat,
         transforms.Normalize((Etl9GDataset.mean, Etl9GDataset.mean, Etl9GDataset.mean),
                              (Etl9GDataset.std, Etl9GDataset.std, Etl9GDataset.std))
     ])
@@ -101,13 +101,13 @@ chinese_transforms_etl2 = {
     'train': transforms.Compose([
         transforms.Resize(96),
         transforms.ToTensor(),
-        utils.transforms.ToFloat,
+        ToFloat,
         transforms.Normalize([Etl2Dataset.mean], [Etl2Dataset.std])
     ]),
     'test': transforms.Compose([
         transforms.Resize(96),
         transforms.ToTensor(),
-        utils.transforms.ToFloat,
+        ToFloat,
         transforms.Normalize([Etl2Dataset.mean], [Etl2Dataset.std])
     ])
 }
@@ -116,13 +116,13 @@ chinese_transforms_etl9g = {
     'train': transforms.Compose([
         transforms.Resize(96),
         transforms.ToTensor(),
-        utils.transforms.ToFloat,
+        ToFloat,
         transforms.Normalize([Etl9GDataset.mean], [Etl9GDataset.std])
     ]),
     'test': transforms.Compose([
         transforms.Resize(96),
         transforms.ToTensor(),
-        utils.transforms.ToFloat,
+        ToFloat,
         transforms.Normalize([Etl9GDataset.mean], [Etl9GDataset.std])
     ])
 }
