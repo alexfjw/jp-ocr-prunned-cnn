@@ -1,5 +1,5 @@
 import unittest
-import src.prunable_nn as pnn
+import src.nn.prunable_nn as pnn
 import torch
 import numpy as np
 from torch.autograd import Variable
@@ -111,23 +111,6 @@ class TestDropInputClasses(unittest.TestCase):
         # ensure num features is reduced
         self.assertTrue(module.num_features, old_num_features-1)
 
-    def test_PBatchNorm1d(self):
-        dropped_index = 0
-        module = pnn.PBatchNorm1d(2)
-
-        old_num_features = module.num_features
-        old_bias = module.bias.data.cpu().numpy()
-        old_weight = module.weight.data.cpu().numpy()
-
-        module.drop_input_channel(dropped_index)
-
-        # ensure that the chosen index is dropped
-        expected_weight = np.delete(old_weight, dropped_index, 0)
-        self.assertTrue(np.array_equal(module.weight.data.cpu().numpy(), expected_weight))
-        expected_bias = np.delete(old_bias, dropped_index, 0)
-        self.assertTrue(np.array_equal(module.bias.data.cpu().numpy(), expected_bias))
-        # ensure num features is reduced
-        self.assertTrue(module.num_features, old_num_features-1)
 
 if __name__ == '__main__':
     unittest.main()

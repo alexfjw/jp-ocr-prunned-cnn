@@ -1,5 +1,4 @@
-from src.datasets import Etl2Dataset
-from utils.utf8 import print_utf8
+from src.data.datasets import Etl2Dataset
 
 print('testing etl2')
 etl2 = Etl2Dataset()

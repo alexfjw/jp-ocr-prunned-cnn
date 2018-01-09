@@ -1,6 +1,5 @@
-from src.datasets import Etl9BDataset
+from src.data.datasets import Etl9BDataset
 from utils.utf8 import print_utf8
-import sys
 
 print('testing etl9b')
 etl9b = Etl9BDataset()

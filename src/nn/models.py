@@ -1,17 +1,29 @@
 import torch.nn as nn
-import src.prunable_nn as pnn
-import utils
-from src.datasets import *
+import src.nn.prunable_nn as pnn
 import torch.utils.model_zoo as model_zoo
-from torchvision import models, transforms
+from torchvision import models
 
-model_urls = {
-    'vgg11': 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth',
-}
+
+class VGG(models.VGG):
+
+    def prune(self):
+        # gather all modules & their indices.
+        # gather all talyor_estimate_lists & pair with the indices
+        # gather all talyor_estimates & paired with their list index & module index
+        # reduce to the minimum in the list
+        # grab the module with the minimum
+        # prune, pnn.prune_feature_map(list_index)
+        # grab the PBatchNorm & adjust
+        # If it is the 3rd last item, grab the classifier & modify the PLinear
+
+        pass
+
 
 def vgg_model(num_classes):
-    model = models.VGG(make_layers(cfg['A'], batch_norm=True))
-    model.load_state_dict(model_zoo.load_url(model_urls['vgg11_bn']))
+    cfg = {'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],}
+    model_url = 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth'
+    model = VGG(make_layers(cfg['A'], batch_norm=True))
+    model.load_state_dict(model_zoo.load_url(model_url))
 
     model.classifier = nn.Sequential(
         pnn.PLinear(512 * 7 * 7, 4096),
@@ -24,12 +36,7 @@ def vgg_model(num_classes):
     )
     return model, 'vgg11_bn'
 
-# taken from pytorch's vgg.py
-cfg = {
-    'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
-}
 
-# taken from pytorch's vgg.py
 def make_layers(cfg, batch_norm=False):
     layers = []
     in_channels = 3
@@ -57,7 +64,7 @@ class ChineseNet(nn.Module):
         self.features = self.make_layers()
         self.classifier = nn.Sequential(
             pnn.PLinear(384*2*2, 1024),
-            pnn.PBatchNorm1d(1024),
+            nn.BatchNorm1d(1024),
             nn.PReLU(),
             nn.Dropout(),
             nn.Linear(1024, num_classes)
@@ -82,3 +89,15 @@ class ChineseNet(nn.Module):
         x = self.classifier(x)
         return x
 
+    def prune(self):
+        # use sequential as a list
+        # gather all modules & their indices.
+        # gather all talyor_estimate_lists & pair with the indices
+        # gather all talyor_estimates & paired with their list index & module index
+        # reduce to the minimum in the list
+        # grab the module with the minimum
+        # prune, pnn.prune_feature_map(list_index)
+        # grab the PBatcHNorm & PReLU & drop them
+        # If it is the 3rd last item, grab the classifier & modify the PLinear
+
+        pass

@@ -1,6 +1,5 @@
-from src.datasets import Etl_2_9G_Dataset
+from src.data.datasets import Etl_2_9G_Dataset
 import numpy as np
-from utils.utf8 import print_utf8
 
 print('testing etl2_9g')
 nones = {'train': None, 'test': None}

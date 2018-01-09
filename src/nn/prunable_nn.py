@@ -102,15 +102,3 @@ class PBatchNorm2d(nn.BatchNorm2d):
         self.num_features -= 1
 
 
-class PBatchNorm1d(nn.BatchNorm1d):
-
-    def drop_input_channel(self, index):
-        if self.affine:
-            is_cuda = self.weight.is_cuda
-            indices = Variable(torch.LongTensor([i for i in range(self.num_features) if i != index]))
-            indices = indices.cuda() if is_cuda else indices
-
-            self.weight = nn.Parameter(self.weight.index_select(0, indices).data)
-            self.bias = nn.Parameter(self.bias.index_select(0, indices).data)
-
-        self.num_features -= 1

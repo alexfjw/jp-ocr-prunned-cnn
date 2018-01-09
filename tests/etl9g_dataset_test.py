@@ -1,5 +1,4 @@
-from src.datasets import Etl9GDataset
-from utils.utf8 import print_utf8
+from src.data.datasets import Etl9GDataset
 
 print('testing etl9g')
 etl9g = Etl9GDataset()

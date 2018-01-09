@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler, BatchSampler
 from utils.model_selection import stratified_test_split
-from src.datasets import *
+from src.data.datasets import *
 from utils.transforms import ToFloat
 from torchvision import transforms
 
