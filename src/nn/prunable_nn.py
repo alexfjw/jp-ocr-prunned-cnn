@@ -69,8 +69,8 @@ class PLinear(nn.Linear):
         Previous layer is expected to be a convnet which just underwent pruning
         Drop cells connected to the pruned layer of the convnet
         :param input_shape: shape of inputs before flattening, should exclude batch_size
-        :param dim: dimension where index is dropped, w.r.t input_shape
         :param index: index to drop
+        :param dim: dimension where index is dropped, w.r.t input_shape
         :return:
         """
         is_cuda = self.weight.is_cuda

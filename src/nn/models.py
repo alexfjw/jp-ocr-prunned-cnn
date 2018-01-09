@@ -2,11 +2,39 @@ import torch.nn as nn
 import src.nn.prunable_nn as pnn
 import torch.utils.model_zoo as model_zoo
 from torchvision import models
+from operator import itemgetter
 
 
 class VGG(models.VGG):
 
     def prune(self):
+        feature_list = list(enumerate(self.features))
+        # grab the taylor estimates of PConv2ds & pair with the module's index in self.features
+        taylor_estimates_by_module = [(module.taylor_estimates, module_idx) for module, module_idx in feature_list
+                                      if issubclass(module, pnn.PConv2d)]
+        taylor_estimates_by_feature_map = \
+            [(estimate, map_idx, module_idx)
+             for estimates_by_map, module_idx in taylor_estimates_by_module
+             for estimate, map_idx in enumerate(estimates_by_map)]
+
+        _, min_map_idx, min_module_idx = min(taylor_estimates_by_feature_map, key=itemgetter(0))
+
+        p_conv2d = self.features[min_module_idx]
+        p_conv2d.prune_feature_map(min_map_idx)
+
+        p_batchnorm = self.features[min_module_idx+1]
+        p_batchnorm.drop_input_channel(min_map_idx)
+
+        offset = 1 # batchnorm
+        is_last_conv2d = (len(feature_list)-1)-offset == min_module_idx
+        if is_last_conv2d:
+            first_p_linear = self.classifier[0]
+            shape = (first_p_linear.in_features//49, 7, 7) # the input is always ?x7x7
+            first_p_linear.drop_inputs(shape, min_map_idx)
+        else:
+            next_p_conv2d = self.features[min_module_idx+offset+1]
+            next_p_conv2d.drop_input_channel(min_map_idx)
+
         # gather all modules & their indices.
         # gather all talyor_estimate_lists & pair with the indices
         # gather all talyor_estimates & paired with their list index & module index
@@ -15,8 +43,6 @@ class VGG(models.VGG):
         # prune, pnn.prune_feature_map(list_index)
         # grab the PBatchNorm & adjust
         # If it is the 3rd last item, grab the classifier & modify the PLinear
-
-        pass
 
 
 def vgg_model(num_classes):
@@ -90,14 +116,33 @@ class ChineseNet(nn.Module):
         return x
 
     def prune(self):
-        # use sequential as a list
-        # gather all modules & their indices.
-        # gather all talyor_estimate_lists & pair with the indices
-        # gather all talyor_estimates & paired with their list index & module index
-        # reduce to the minimum in the list
-        # grab the module with the minimum
-        # prune, pnn.prune_feature_map(list_index)
-        # grab the PBatcHNorm & PReLU & drop them
-        # If it is the 3rd last item, grab the classifier & modify the PLinear
+        feature_list = list(enumerate(self.features))
+        # grab the taylor estimates of PConv2ds & pair with the module's index in self.features
+        taylor_estimates_by_module = [(module.taylor_estimates, module_idx) for module, module_idx in feature_list
+                                      if issubclass(module, pnn.PConv2d)]
+        taylor_estimates_by_feature_map = \
+            [(estimate, map_idx, module_idx)
+             for estimates_by_map, module_idx in taylor_estimates_by_module
+             for estimate, map_idx in enumerate(estimates_by_map)]
 
-        pass
+        _, min_map_idx, min_module_idx = min(taylor_estimates_by_feature_map, key=itemgetter(0))
+
+        p_conv2d = self.features[min_module_idx]
+        p_conv2d.prune_feature_map(min_map_idx)
+
+        p_batchnorm = self.features[min_module_idx+1]
+        p_batchnorm.drop_input_channel(min_map_idx)
+
+        p_prelu = self.features[min_module_idx+2]
+        p_prelu.drop_inputs(min_map_idx)
+
+        offset = 2 # batchnorm & prelu
+        is_last_conv2d = (len(feature_list)-1)-offset == min_module_idx
+        if is_last_conv2d:
+            first_p_linear = self.classifier[0]
+            shape = (first_p_linear.in_features//4, 2, 2) # the input is always ?x2x2
+            first_p_linear.drop_inputs(shape, min_map_idx)
+        else:
+            next_p_conv2d = self.features[min_module_idx+offset+1]
+            next_p_conv2d.drop_input_channel(min_map_idx)
+
