@@ -5,6 +5,7 @@ from utils.pytorch_modelsize import SizeEstimator
 from sklearn.metrics import f1_score
 from datetime import datetime
 
+
 def model_to_weights(source, dest):
     x = torch.load(source)
     torch.save(x.state_dict(), dest)

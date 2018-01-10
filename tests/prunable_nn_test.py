@@ -18,7 +18,7 @@ class TestPrunableConv2d(unittest.TestCase):
         self.input = Variable(torch.rand(*self.input_shape).cuda(), requires_grad=True)
         self.upstream_gradient = torch.rand(*self.input_shape).cuda()
 
-    def test_taylor_estimates(self):
+    def getTaylorEstimates_ShouldGiveValidValueAndSize(self):
         output = self.module(self.input)
         torch.autograd.backward(output, self.upstream_gradient)
 
@@ -33,7 +33,7 @@ class TestPrunableConv2d(unittest.TestCase):
         # ensure not zero
         self.assertFalse(np.array_equal(estimates.numpy(), torch.zeros(size).numpy()))
 
-    def test_prune_feature_map(self):
+    def pruneFeatureMap_ShouldPruneRightParams(self):
         dropped_index = 0
         output = self.module(self.input)
         torch.autograd.backward(output, self.upstream_gradient)
@@ -58,7 +58,7 @@ class TestPrunableConv2d(unittest.TestCase):
         expected = np.delete(old_weight_values, dropped_index , 0)
         self.assertTrue(np.array_equal(self.module.weight.data.cpu().numpy(), expected))
 
-    def test_drop_input_channel(self):
+    def dropInputChannel_ShouldDropRightValues(self):
         dropped_index = 0
 
         old_weight_values = self.module.weight.data.cpu().numpy()
@@ -71,7 +71,7 @@ class TestPrunableConv2d(unittest.TestCase):
 
 class TestDropInputClasses(unittest.TestCase):
 
-    def test_PLinear(self):
+    def PLinearDropInputs_ShouldDropRightParams(self):
         dropped_index = 0
 
         # assume input is 2x2x2, 2 layers of 2x2
@@ -93,7 +93,7 @@ class TestDropInputClasses(unittest.TestCase):
         # ensure num features is reduced
         self.assertTrue(module.in_features, old_num_features-1)
 
-    def test_PBatchNorm2d(self):
+    def PBatchNorm2dDropInputChannel_ShouldDropRightParams(self):
         dropped_index = 0
         module = pnn.PBatchNorm2d(2)
 

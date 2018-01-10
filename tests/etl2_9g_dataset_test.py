@@ -12,7 +12,6 @@ etl[len(etl) - 1]
 first_image, _ = etl[0]
 print(np.array(first_image).shape)
 
-# print a character
 last_image, _ = etl[len(etl)-1]
 print(np.array(last_image).shape)
 
@@ -24,4 +23,7 @@ last_image.show()
 
 # display the range, should be 0-255
 print('extrema:', first_image.getextrema())
+
+# print num classes
+print(len(etl.label_encoder.classes_))
 

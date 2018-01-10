@@ -30,7 +30,7 @@ class Etl2Dataset(Dataset):
     def T56(c):
         return Etl2Dataset.t56s[c]
 
-    with codecs.open('data/co59-utf8.txt', 'r', 'utf-8') as co59f:
+    with codecs.open('raw_data/co59-utf8.txt', 'r', 'utf-8') as co59f:
         co59t = co59f.read()
 
     co59l = co59t.split()
@@ -42,11 +42,11 @@ class Etl2Dataset(Dataset):
 
     def __init__(self, train_transforms=None, test_transforms=None):
         # files to item count
-        self.files = [('data/ETL2/ETL2_1', 9056),
-                      ('data/ETL2/ETL2_2', 10480),
-                      ('data/ETL2/ETL2_3', 11360),
-                      ('data/ETL2/ETL2_4', 10480),
-                      ('data/ETL2/ETL2_5', 11420)
+        self.files = [('raw_data/ETL2/ETL2_1', 9056),
+                      ('raw_data/ETL2/ETL2_2', 10480),
+                      ('raw_data/ETL2/ETL2_3', 11360),
+                      ('raw_data/ETL2/ETL2_4', 10480),
+                      ('raw_data/ETL2/ETL2_5', 11420)
                       ]
         self.train = True
         self.train_transforms = train_transforms
@@ -61,7 +61,7 @@ class Etl2Dataset(Dataset):
         return le
 
     def load_entries_to_memory(self):
-        file_name = 'data/etl2_entries.obj'
+        file_name = 'raw_data/etl2_entries.obj'
         try:
             file_handler = open(file_name, 'rb')
             entries = pickle.load(file_handler)
@@ -148,7 +148,7 @@ class Etl9GDataset(Dataset):
 
     def __init__(self, train_transforms=None, test_transforms=None):
         # files to item count
-        self.files_directory = 'data/ETL9G'
+        self.files_directory = 'raw_data/ETL9G'
         self.train = True
         self.train_transforms = train_transforms
         self.test_transforms = test_transforms

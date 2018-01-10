@@ -7,6 +7,7 @@ from utils.model_utils import benchmark
 from utils.iter import grouper
 from torch.autograd import Variable
 
+
 def prune_model(model:nn.Module, dataloaders, prune_ratio=0.5, finetuning_passes=10):
     use_gpu = torch.cuda.is_available()
 
@@ -73,7 +74,6 @@ def prune_step(model:nn.Module, data, criterion, use_gpu):
 
 
 def finetune_step(model, data, criterion, use_gpu):
-    # investigate optim
     optimizer = optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
     for x in data:
         inputs, labels = x
