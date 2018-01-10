@@ -4,6 +4,7 @@ from torch.autograd import Variable
 from utils.pytorch_modelsize import SizeEstimator
 from sklearn.metrics import f1_score
 from datetime import datetime
+from tqdm import tqdm
 
 
 def model_to_weights(source, dest):
@@ -20,14 +21,14 @@ def benchmark(model, val_dataloader, header):
     mbytes = bytes / 1e6
 
     print(f'Benchmark, {header}: ')
-    print(f'Megabytes: {mbytes}')
+    print(f'Size of model: {mbytes}MB')
 
     # show accuracy using validation set
 
     model.train(False)
     val_dataloader.dataset.train = False
-    criterion = nn.CrossEntropyLoss()
 
+    criterion = nn.CrossEntropyLoss()
     running_loss = 0.0
     running_labels = torch.LongTensor()
     running_predictions = torch.LongTensor()
@@ -36,13 +37,14 @@ def benchmark(model, val_dataloader, header):
     if use_gpu:
         model = model.cuda()
 
-    for data in val_dataloader:
+    for data in tqdm(val_dataloader):
         inputs, labels = data
         if use_gpu:
             inputs = Variable(inputs.cuda(), volatile=True)
             labels = Variable(labels.cuda(), volatile=True)
         else:
-            inputs, labels = Variable(inputs), Variable(labels)
+            inputs, labels = Variable(inputs, volatile=True), Variable(labels, volatile=True)
+
 
         # Forward and loss calculation
         outputs = model(inputs)
@@ -66,8 +68,9 @@ def benchmark(model, val_dataloader, header):
     # show time taken for single input
     model = model.cpu()
     inputs, _ = next(iter(val_dataloader))
+    print(inputs.size())
     t0 = datetime.now()
-    model(input)
+    model(Variable(inputs, volatile=True))
     t1 = datetime.now()
     print(f'Time taken for inference: {(t1-t0).total_seconds()/val_dataloader.batch_size}s')
 

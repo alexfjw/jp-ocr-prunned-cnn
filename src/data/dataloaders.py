@@ -38,7 +38,7 @@ def get_etl2_dataloaders(model_type):
     """
     transform_group = transfer_learn_etl2_transforms if model_type == 'vgg' else chinese_transforms_etl2
 
-    etl2 = Etl2Dataset(transform_group)
+    etl2 = Etl2Dataset(transform_group['train'], transform_group['test'])
 
     train_indices, val_indices, test_indices, _, _, _ = \
         stratified_test_split(etl2, test_size=0.2, val_size=0.2)
