@@ -98,6 +98,8 @@ class PBatchNorm2d(nn.BatchNorm2d):
 
             self.weight = nn.Parameter(self.weight.index_select(0, indices).data)
             self.bias = nn.Parameter(self.bias.index_select(0, indices).data)
+            self.running_mean = self.running_mean.index_select(0, indices.data)
+            self.running_var = self.running_var.index_select(0, indices.data)
 
         self.num_features -= 1
 

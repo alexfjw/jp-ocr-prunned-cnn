@@ -10,12 +10,12 @@ class VGG(models.VGG):
     def prune(self):
         feature_list = list(enumerate(self.features))
         # grab the taylor estimates of PConv2ds & pair with the module's index in self.features
-        taylor_estimates_by_module = [(module.taylor_estimates, module_idx) for module, module_idx in feature_list
-                                      if issubclass(module, pnn.PConv2d)]
+        taylor_estimates_by_module = [(module.taylor_estimates, module_idx) for module_idx, module in feature_list
+                                      if issubclass(type(module), pnn.PConv2d)]
         taylor_estimates_by_feature_map = \
             [(estimate, map_idx, module_idx)
              for estimates_by_map, module_idx in taylor_estimates_by_module
-             for estimate, map_idx in enumerate(estimates_by_map)]
+             for map_idx, estimate in enumerate(estimates_by_map)]
 
         _, min_map_idx, min_module_idx = min(taylor_estimates_by_feature_map, key=itemgetter(0))
 
@@ -25,7 +25,7 @@ class VGG(models.VGG):
         p_batchnorm = self.features[min_module_idx+1]
         p_batchnorm.drop_input_channel(min_map_idx)
 
-        offset = 1 # batchnorm
+        offset = 3 # batchnorm, relu, maxpool
         is_last_conv2d = (len(feature_list)-1)-offset == min_module_idx
         if is_last_conv2d:
             first_p_linear = self.classifier[0]
@@ -47,9 +47,9 @@ class VGG(models.VGG):
 
 def vgg_model(num_classes):
     cfg = {'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],}
-    model_url = 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth'
+    model_url = 'https://download.pytorch.org/models/vgg11_bn-6002323d.pth'
     model = VGG(make_layers(cfg['A'], batch_norm=True))
-    model.load_state_dict(model_zoo.load_url(model_url))
+    model.load_state_dict(model_zoo.load_url(model_url), strict=False)
 
     model.classifier = nn.Sequential(
         pnn.PLinear(512 * 7 * 7, 4096),
@@ -118,12 +118,13 @@ class ChineseNet(nn.Module):
     def prune(self):
         feature_list = list(enumerate(self.features))
         # grab the taylor estimates of PConv2ds & pair with the module's index in self.features
-        taylor_estimates_by_module = [(module.taylor_estimates, module_idx) for module, module_idx in feature_list
-                                      if issubclass(module, pnn.PConv2d)]
+        taylor_estimates_by_module = [(module.taylor_estimates, module_idx) for module_idx, module in feature_list
+                                      if issubclass(type(module), pnn.PConv2d)]
+
         taylor_estimates_by_feature_map = \
             [(estimate, map_idx, module_idx)
              for estimates_by_map, module_idx in taylor_estimates_by_module
-             for estimate, map_idx in enumerate(estimates_by_map)]
+             for map_idx, estimate in enumerate(estimates_by_map)]
 
         _, min_map_idx, min_module_idx = min(taylor_estimates_by_feature_map, key=itemgetter(0))
 
@@ -133,10 +134,9 @@ class ChineseNet(nn.Module):
         p_batchnorm = self.features[min_module_idx+1]
         p_batchnorm.drop_input_channel(min_map_idx)
 
-        p_prelu = self.features[min_module_idx+2]
-        p_prelu.drop_inputs(min_map_idx)
+        # prelu doesn't need to drop channels
 
-        offset = 2 # batchnorm & prelu
+        offset = 3 # batchnorm & prelu & maxpool
         is_last_conv2d = (len(feature_list)-1)-offset == min_module_idx
         if is_last_conv2d:
             first_p_linear = self.classifier[0]

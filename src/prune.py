@@ -36,24 +36,24 @@ def prune_model(model:nn.Module, dataloaders, prune_ratio=0.5, finetuning_passes
 
 # test all of the below later
 def estimate_pruning_iterations(model, prune_ratio):
-    num_feature_maps = get_num_feature_maps(model)
+    num_feature_maps = get_num_prunable_feature_maps(model)
     num_params = get_num_parameters(model)
     params_per_map = num_feature_maps // num_params
 
     return np.ceil(num_params * prune_ratio / params_per_map)
 
 
-def get_num_feature_maps(model):
-    conv2ds = {module for module in model.modules() if issubclass(module, nn.Conv2d)}
-    return np.sum({conv2d.out_channels for conv2d in conv2ds})
+def get_num_prunable_feature_maps(model):
+    conv2ds = {module for module in model.modules() if issubclass(type(module), nn.Conv2d)}
+    return np.sum(conv2d.out_channels for conv2d in conv2ds)
 
 
 def get_num_parameters(model):
     # get total number of variables from all conv2d featuremaps
-    conv2d_parameters = {module.parameters() for module in model.modules() if issubclass(module, nn.Conv2d)}
+    conv2d_parameters = (module.parameters() for module in model.modules() if issubclass(type(module), nn.Conv2d))
     param_objs = itertools.chain(*conv2d_parameters)
 
-    return np.sum({np.prod(np.array(p.size())) for p in param_objs})
+    return np.sum(np.prod(np.array(p.size())) for p in param_objs)
 
 
 def prune_step(model:nn.Module, data, criterion, use_gpu):
