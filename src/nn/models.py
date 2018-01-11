@@ -128,20 +128,26 @@ class ChineseNet(nn.Module):
 
         _, min_map_idx, min_module_idx = min(taylor_estimates_by_feature_map, key=itemgetter(0))
 
+        print('module idx: ', min_module_idx)
+        print('map idx: ', min_map_idx)
+
         p_conv2d = self.features[min_module_idx]
         p_conv2d.prune_feature_map(min_map_idx)
 
         p_batchnorm = self.features[min_module_idx+1]
         p_batchnorm.drop_input_channel(min_map_idx)
 
-        # prelu doesn't need to drop channels
-
         offset = 3 # batchnorm & prelu & maxpool
         is_last_conv2d = (len(feature_list)-1)-offset == min_module_idx
+        is_double_conv2d_layer = min_module_idx == 12 or min_module_idx == 18
         if is_last_conv2d:
             first_p_linear = self.classifier[0]
             shape = (first_p_linear.in_features//4, 2, 2) # the input is always ?x2x2
             first_p_linear.drop_inputs(shape, min_map_idx)
+        elif is_double_conv2d_layer:
+            # no max pool, -1
+            next_p_conv2d = self.features[min_module_idx+offset]
+            next_p_conv2d.drop_input_channel(min_map_idx)
         else:
             next_p_conv2d = self.features[min_module_idx+offset+1]
             next_p_conv2d.drop_input_channel(min_map_idx)

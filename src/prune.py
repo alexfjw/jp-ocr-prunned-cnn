@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import itertools
 import numpy as np
+from tqdm import tqdm
 from utils.model_utils import benchmark
 from utils.iter import grouper
 from torch.autograd import Variable
@@ -19,9 +20,9 @@ def prune_model(model:nn.Module, dataloaders, prune_ratio=0.5, finetuning_passes
     dataloaders['train'].dataset.train = True
     data = itertools.cycle(grouper(dataloaders['train'], finetuning_passes+1))
 
-    benchmark(model, dataloaders['val'], 'before pruning')
+    # benchmark(model, dataloaders['val'], 'before pruning')
 
-    for i in range(pruning_iterations):
+    for i in tqdm(range(pruning_iterations)):
         if use_gpu:
             model = model.cuda()
         model.train()
@@ -38,9 +39,9 @@ def prune_model(model:nn.Module, dataloaders, prune_ratio=0.5, finetuning_passes
 def estimate_pruning_iterations(model, prune_ratio):
     num_feature_maps = get_num_prunable_feature_maps(model)
     num_params = get_num_parameters(model)
-    params_per_map = num_feature_maps // num_params
+    params_per_map = num_params // num_feature_maps
 
-    return np.ceil(num_params * prune_ratio / params_per_map)
+    return int(np.ceil(num_params * prune_ratio / params_per_map))
 
 
 def get_num_prunable_feature_maps(model):

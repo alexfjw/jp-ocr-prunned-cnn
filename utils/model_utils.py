@@ -21,7 +21,7 @@ def benchmark(model, val_dataloader, header):
     mbytes = bytes / 1e6
 
     print(f'Benchmark, {header}: ')
-    print(f'Size of model: {mbytes}MB')
+    print(f'Size of model: {mbytes} MB')
 
     # show accuracy using validation set
 
@@ -45,7 +45,6 @@ def benchmark(model, val_dataloader, header):
         else:
             inputs, labels = Variable(inputs, volatile=True), Variable(labels, volatile=True)
 
-
         # Forward and loss calculation
         outputs = model(inputs)
         _, pred_indices = torch.max(outputs.data, 1)
@@ -68,7 +67,6 @@ def benchmark(model, val_dataloader, header):
     # show time taken for single input
     model = model.cpu()
     inputs, _ = next(iter(val_dataloader))
-    print(inputs.size())
     t0 = datetime.now()
     model(Variable(inputs, volatile=True))
     t1 = datetime.now()
