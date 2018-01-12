@@ -33,7 +33,7 @@ class PConv2d(nn.Conv2d):
             .div_(n_dimensions)
 
         # normalization
-        self.taylor_estimates = estimates / torch.sqrt(torch.sum(estimates * estimates))
+        self.taylor_estimates = torch.abs(estimates) / torch.sqrt(torch.sum(estimates * estimates))
         del estimates, self.__recent_activations
         self.__recent_activations = None
 

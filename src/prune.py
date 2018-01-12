@@ -9,7 +9,7 @@ from utils.iter import grouper
 from torch.autograd import Variable
 
 
-def prune_model(model:nn.Module, dataloaders, prune_ratio=0.5, finetuning_passes=10):
+def prune_model(model:nn.Module, dataloaders, prune_ratio=0.8, finetuning_passes=10):
     use_gpu = torch.cuda.is_available()
 
     criterion = nn.CrossEntropyLoss()
@@ -18,9 +18,9 @@ def prune_model(model:nn.Module, dataloaders, prune_ratio=0.5, finetuning_passes
 
     # from dataloader, group into 11s & cycle
     dataloaders['train'].dataset.train = True
-    data = itertools.cycle(grouper(dataloaders['train'], finetuning_passes+1))
+    data = grouper(itertools.cycle(iter(dataloaders['train'])), finetuning_passes+1)
 
-    # benchmark(model, dataloaders['val'], 'before pruning')
+    benchmark(model, dataloaders['val'], 'before pruning')
 
     for i in tqdm(range(pruning_iterations)):
         if use_gpu:
@@ -33,6 +33,8 @@ def prune_model(model:nn.Module, dataloaders, prune_ratio=0.5, finetuning_passes
         # check progress every 10% of the journey
         if (i % checkpoint) == (checkpoint - 1):
             benchmark(model, dataloaders['val'], f'pruning, {i}/{pruning_iterations} iterations')
+
+    benchmark(model, dataloaders['val'], 'after pruning')
 
 
 # test all of the below later

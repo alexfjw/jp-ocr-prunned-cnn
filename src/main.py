@@ -40,7 +40,7 @@ def main():
         model, name = vgg_model(num_classes) if args.model == "vgg" \
             else chinese_model(num_classes)
         model.load_state_dict(torch.load(f'trained_models/{args.model}_{args.dataset}.weights'))
-        finetuning_passes = 10
+        finetuning_passes = 100
         prune_model(model, data_loaders, finetuning_passes=finetuning_passes)
         torch.save(model.state_dict(),
                    f'trained_models/pruned_{args.model}_{args.dataset}_finetune{finetuning_passes}.weights')

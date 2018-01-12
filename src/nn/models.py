@@ -11,7 +11,7 @@ class VGG(models.VGG):
         feature_list = list(enumerate(self.features))
         # grab the taylor estimates of PConv2ds & pair with the module's index in self.features
         taylor_estimates_by_module = [(module.taylor_estimates, module_idx) for module_idx, module in feature_list
-                                      if issubclass(type(module), pnn.PConv2d)]
+                                      if issubclass(type(module), pnn.PConv2d) and module.out_channels > 1]
         taylor_estimates_by_feature_map = \
             [(estimate, map_idx, module_idx)
              for estimates_by_map, module_idx in taylor_estimates_by_module
@@ -98,6 +98,7 @@ class ChineseNet(nn.Module):
 
     def make_layers(self):
         layers = []
+        # 0,12,3,   4,56,7  8,910,11    12,1314 15,1617,18, 19
         config = [96, 'M', 128, 'M', 160, 'M', 256, 256, 'M', 384, 384, 'M']
         in_channels = 1
         for v in config:
@@ -119,7 +120,7 @@ class ChineseNet(nn.Module):
         feature_list = list(enumerate(self.features))
         # grab the taylor estimates of PConv2ds & pair with the module's index in self.features
         taylor_estimates_by_module = [(module.taylor_estimates, module_idx) for module_idx, module in feature_list
-                                      if issubclass(type(module), pnn.PConv2d)]
+                                      if issubclass(type(module), pnn.PConv2d) and module.out_channels > 1]
 
         taylor_estimates_by_feature_map = \
             [(estimate, map_idx, module_idx)
@@ -127,9 +128,6 @@ class ChineseNet(nn.Module):
              for map_idx, estimate in enumerate(estimates_by_map)]
 
         _, min_map_idx, min_module_idx = min(taylor_estimates_by_feature_map, key=itemgetter(0))
-
-        print('module idx: ', min_module_idx)
-        print('map idx: ', min_map_idx)
 
         p_conv2d = self.features[min_module_idx]
         p_conv2d.prune_feature_map(min_map_idx)
@@ -139,7 +137,7 @@ class ChineseNet(nn.Module):
 
         offset = 3 # batchnorm & prelu & maxpool
         is_last_conv2d = (len(feature_list)-1)-offset == min_module_idx
-        is_double_conv2d_layer = min_module_idx == 12 or min_module_idx == 18
+        is_double_conv2d_layer = min_module_idx == 12 or min_module_idx == 19
         if is_last_conv2d:
             first_p_linear = self.classifier[0]
             shape = (first_p_linear.in_features//4, 2, 2) # the input is always ?x2x2
