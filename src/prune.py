@@ -14,9 +14,9 @@ def prune_model(model:nn.Module, dataloaders, prune_ratio=0.8, finetuning_passes
 
     criterion = nn.CrossEntropyLoss()
     pruning_iterations = estimate_pruning_iterations(model, prune_ratio)
-    checkpoint = pruning_iterations // 10
+    checkpoint = pruning_iterations // 5 # check progress 5 times in total
 
-    # from dataloader, group into 11s & cycle
+    # from dataloader, cycle & group
     dataloaders['train'].dataset.train = True
     data = grouper(itertools.cycle(iter(dataloaders['train'])), finetuning_passes+1)
 
@@ -30,7 +30,7 @@ def prune_model(model:nn.Module, dataloaders, prune_ratio=0.8, finetuning_passes
         prune_step(model, prune_data, criterion, use_gpu)
         finetune_step(model, finetune_data, criterion, use_gpu)
 
-        # check progress every 10% of the journey
+        # check progress
         if (i % checkpoint) == (checkpoint - 1):
             benchmark(model, dataloaders['val'], f'pruning, {i}/{pruning_iterations} iterations')
 

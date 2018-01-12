@@ -8,6 +8,14 @@ from operator import itemgetter
 class VGG(models.VGG):
 
     def prune(self):
+        # gather all modules & their indices. (excluding classifier)
+        # gather all talyor_estimate_lists & pair with the indices
+        # gather all talyor_estimates & pair with their list index & module index
+        # reduce to the minimum in the list
+        # grab the module with the minimum & prune
+        # grab the PBatchNorm & adjust
+        # adjust the next layer too
+
         feature_list = list(enumerate(self.features))
         # grab the taylor estimates of PConv2ds & pair with the module's index in self.features
         taylor_estimates_by_module = [(module.taylor_estimates, module_idx) for module_idx, module in feature_list
@@ -27,22 +35,19 @@ class VGG(models.VGG):
 
         offset = 3 # batchnorm, relu, maxpool
         is_last_conv2d = (len(feature_list)-1)-offset == min_module_idx
+        is_double_conv2d_layer = min_module_idx == 8 or min_module_idx == 15 or min_module_idx == 22
         if is_last_conv2d:
             first_p_linear = self.classifier[0]
             shape = (first_p_linear.in_features//49, 7, 7) # the input is always ?x7x7
             first_p_linear.drop_inputs(shape, min_map_idx)
+        elif is_double_conv2d_layer:
+            # no max pool,
+            next_p_conv2d = self.features[min_module_idx+offset]
+            next_p_conv2d.drop_input_channel(min_map_idx)
         else:
             next_p_conv2d = self.features[min_module_idx+offset+1]
             next_p_conv2d.drop_input_channel(min_map_idx)
 
-        # gather all modules & their indices.
-        # gather all talyor_estimate_lists & pair with the indices
-        # gather all talyor_estimates & paired with their list index & module index
-        # reduce to the minimum in the list
-        # grab the module with the minimum
-        # prune, pnn.prune_feature_map(list_index)
-        # grab the PBatchNorm & adjust
-        # If it is the 3rd last item, grab the classifier & modify the PLinear
 
 
 def vgg_model(num_classes):
@@ -117,6 +122,14 @@ class ChineseNet(nn.Module):
         return x
 
     def prune(self):
+        # gather all modules & their indices. (excluding classifier)
+        # gather all talyor_estimate_lists & pair with the indices
+        # gather all talyor_estimates & pair with their list index & module index
+        # reduce to the minimum in the list
+        # grab the module with the minimum & prune
+        # grab the PBatchNorm & adjust
+        # adjust the next layer too
+
         feature_list = list(enumerate(self.features))
         # grab the taylor estimates of PConv2ds & pair with the module's index in self.features
         taylor_estimates_by_module = [(module.taylor_estimates, module_idx) for module_idx, module in feature_list
