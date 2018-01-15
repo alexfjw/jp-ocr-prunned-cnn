@@ -32,12 +32,12 @@ def main():
 
     if args.train:
         model, name = \
-            vgg_model(num_classes) if args.model == "vgg" \
+            vgg_model(num_classes) if args.model == "vgg11_bn" \
             else chinese_model(num_classes)
-        model = train_model(model, data_loaders)
+        train_model(model, data_loaders)
         torch.save(model.state_dict(), f'trained_models/{args.model}_{args.dataset}.weights')
     elif args.prune:
-        model, name = vgg_model(num_classes) if args.model == "vgg" \
+        model, name = vgg_model(num_classes) if args.model == "vgg11_bn" \
             else chinese_model(num_classes)
         model.load_state_dict(torch.load(f'trained_models/{args.model}_{args.dataset}.weights'))
         finetuning_passes = 100

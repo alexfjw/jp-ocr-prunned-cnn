@@ -36,7 +36,7 @@ def get_etl2_dataloaders(model_type):
     """
     returns train & test dataloaders for etl2 dataset
     """
-    transform_group = transfer_learn_etl2_transforms if model_type == 'vgg' else chinese_transforms_etl2
+    transform_group = transfer_learn_etl2_transforms if model_type == 'vgg11_bn' else chinese_transforms_etl2
 
     etl2 = Etl2Dataset(transform_group['train'], transform_group['test'])
 
