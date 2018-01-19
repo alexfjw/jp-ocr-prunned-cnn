@@ -89,7 +89,7 @@ def train_model(model, dataloaders):
             epoch_loss = running_loss / loader_size
 
             # Calculate f1_score using true labels and predictions
-            epoch_f1 = f1_score(running_labels.numpy(), running_predictions.numpy(), average='macro')
+            epoch_f1 = f1_score(running_labels.numpy(), running_predictions.numpy(), average='micro')
 
             print('{} Loss: {:.4f} F1: {:.4f}'.format(
                 phase, epoch_loss, epoch_f1))

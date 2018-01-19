@@ -1,3 +1,5 @@
+import torch
+from torch.autograd import Variable
 import torch.nn as nn
 import src.nn.prunable_nn as pnn
 import torch.utils.model_zoo as model_zoo
@@ -57,7 +59,7 @@ def vgg_model(num_classes):
     model.load_state_dict(model_zoo.load_url(model_url), strict=False)
 
     model.classifier = nn.Sequential(
-        pnn.PLinear(512 * 7 * 7, 4096),
+        nn.Linear(512 * 7 * 7, 4096),
         nn.ReLU(True),
         nn.Dropout(),
         nn.Linear(4096, 4096),
@@ -75,9 +77,9 @@ def make_layers(cfg, batch_norm=False):
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
         else:
-            conv2d = pnn.PConv2d(in_channels, v, kernel_size=3, padding=1)
+            conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
             if batch_norm:
-                layers += [conv2d, pnn.PBatchNorm2d(v), nn.ReLU(inplace=True)]
+                layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
             else:
                 layers += [conv2d, nn.ReLU(inplace=True)]
             in_channels = v
@@ -88,25 +90,36 @@ def chinese_model(num_classes):
     return ChineseNet(num_classes), 'chinese_net'
 
 
+def chinese_pruned_80(num_classes):
+    config = [26, 'M', 39, 'M', 52, 'M', 75, 93, 'M', 88, 95, 'M']
+    return ChineseNet(num_classes, config), 'chinese_net_80'
+
+
+def chinese_pruned_90(num_classes):
+    config = [15, 'M', 14, 'M', 20, 'M', 27, 31, 'M', 28, 30, 'M']
+    return ChineseNet(num_classes, config), 'chinese_net_90'
+
+
 class ChineseNet(nn.Module):
     # inspired by https://arxiv.org/abs/1702.07975, used for chinese ocr
-    def __init__(self, num_classes):
+    def __init__(self, num_classes, config=None):
         super(ChineseNet, self).__init__()
+        self.config = [96, 'M', 128, 'M', 160, 'M', 256, 256, 'M', 384, 384, 'M'] if config is None else config
         self.features = self.make_layers()
         self.classifier = nn.Sequential(
-            pnn.PLinear(384*2*2, 1024),
+            # input is 96x96, output from features section should always be 2x2
+            pnn.PLinear(self.config[-2]*2*2, 1024),
             nn.BatchNorm1d(1024),
             nn.PReLU(),
             nn.Dropout(),
             nn.Linear(1024, num_classes)
         )
+        self.convert_to_onnx = False
 
     def make_layers(self):
         layers = []
-        # 0,12,3,   4,56,7  8,910,11    12,1314 15,1617,18, 19
-        config = [96, 'M', 128, 'M', 160, 'M', 256, 256, 'M', 384, 384, 'M']
         in_channels = 1
-        for v in config:
+        for v in self.config:
             if v == 'M':
                 layers += [nn.MaxPool2d(kernel_size=3, stride=2)]
             else:
@@ -118,8 +131,23 @@ class ChineseNet(nn.Module):
     def forward(self, x):
         x = self.features(x)
         x = x.view(x.size(0), -1)
-        x = self.classifier(x)
-        return x
+        if self.convert_to_onnx:
+            x = self.classifier[0](x)
+
+            # manually perform 1d batchnorm, caffe2 currently requires a resize,
+            # which is hard to squeeze into the exported network
+            bn_1d = self.classifier[1]
+            numerator = (x - Variable(bn_1d.running_mean))
+            denominator = Variable(torch.sqrt(bn_1d.running_var + bn_1d.eps))
+            x = numerator/denominator*Variable(bn_1d.weight.data) + Variable(bn_1d.bias.data)
+
+            x = self.classifier[2](x)
+            x = self.classifier[3](x)
+            x = self.classifier[4](x)
+            return x
+        else:
+            x = self.classifier(x)
+            return x
 
     def prune(self):
         # gather all modules & their indices. (excluding classifier)

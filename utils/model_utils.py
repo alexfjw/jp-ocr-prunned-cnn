@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from utils.pytorch_modelsize import SizeEstimator
-from sklearn.metrics import f1_score
+from sklearn.metrics import precision_recall_fscore_support
 from datetime import datetime
 from tqdm import tqdm
 
@@ -24,7 +24,6 @@ def benchmark(model, val_dataloader, header):
     print(f'Size of model: {mbytes} MB')
 
     # show accuracy using validation set
-
     model.train(False)
     val_dataloader.dataset.train = False
 
@@ -60,9 +59,12 @@ def benchmark(model, val_dataloader, header):
     epoch_loss = running_loss / loader_size
 
     # Calculate f1_score using true labels and predictions
-    epoch_f1 = f1_score(running_labels.numpy(), running_predictions.numpy(), average='macro')
+    micro_all = precision_recall_fscore_support(running_labels.numpy(), running_predictions.numpy(), average='micro')
+    print('Loss: {:.4f}'.format(epoch_loss))
+    print('Micro Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(micro_all[0], micro_all[1], micro_all[2]))
 
-    print('Loss: {:.4f} F1: {:.4f}'.format(epoch_loss, epoch_f1))
+    macro_all = precision_recall_fscore_support(running_labels.numpy(), running_predictions.numpy(), average='macro')
+    print('Macro Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(macro_all[0], macro_all[1], macro_all[2]))
 
     # show time taken for single input
     model = model.cpu()

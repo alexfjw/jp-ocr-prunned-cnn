@@ -9,9 +9,9 @@ from utils.iter import grouper
 from torch.autograd import Variable
 
 
-def prune_model(model:nn.Module, dataloaders, prune_ratio=0.8, finetuning_passes=10):
+def prune_model(model:nn.Module, dataloaders, prune_ratio=0.80, finetuning_passes=10):
+    print('Pruning model')
     use_gpu = torch.cuda.is_available()
-
     criterion = nn.CrossEntropyLoss()
     pruning_iterations = estimate_pruning_iterations(model, prune_ratio)
     checkpoint = pruning_iterations // 5 # check progress 5 times in total
@@ -22,6 +22,8 @@ def prune_model(model:nn.Module, dataloaders, prune_ratio=0.8, finetuning_passes
 
     benchmark(model, dataloaders['val'], 'before pruning')
 
+    benchmark_iterations = 1
+    print('Conducting pruning')
     for i in tqdm(range(pruning_iterations)):
         if use_gpu:
             model = model.cuda()
@@ -33,6 +35,14 @@ def prune_model(model:nn.Module, dataloaders, prune_ratio=0.8, finetuning_passes
         # check progress
         if (i % checkpoint) == (checkpoint - 1):
             benchmark(model, dataloaders['val'], f'pruning, {i}/{pruning_iterations} iterations')
+            if benchmark_iterations == 4:
+                print('printed 2nd last benchmark')
+                print(model)
+                print(model, file=open(f"trained_models/temp/{prune_ratio}p_{finetuning_passes}it.txt", 'w'))
+                torch.save(model.state_dict(),
+                           f'trained_models/temp/pruned_{prune_ratio}_{finetuning_passes}it.weights')
+
+            benchmark_iterations += 1
 
     benchmark(model, dataloaders['val'], 'after pruning')
 

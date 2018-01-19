@@ -10,8 +10,8 @@ def get_etl2_9g_dataloaders(model_type):
     """
     returns train & test dataloaders for etl dataset
     """
-    etl2_transforms = transfer_learn_etl2_transforms if model_type == 'vgg' else chinese_transforms_etl2
-    etl9_transforms = transfer_learn_etl9g_transforms if model_type == 'vgg' else chinese_transforms_etl9g
+    etl2_transforms = transfer_learn_etl2_transforms if model_type == 'vgg11_bn' else chinese_transforms_etl2
+    etl9_transforms = transfer_learn_etl9g_transforms if model_type == 'vgg11_bn' else chinese_transforms_etl9g
 
     etl2_9g = Etl_2_9G_Dataset(etl2_transforms, etl9_transforms)
     train_indices, val_indices, test_indices, _, _, _ = \
