@@ -24,8 +24,8 @@ for character_entry in etl9b:
 
 print(len(character_set))
 
-# print mean
-# print('mean: ', etl9b.mean)
+#print mean
+print('mean: ', etl9b.mean)
 
 # print std
-# print('std: ', etl9b.std())
+print('std: ', etl9b.std())
