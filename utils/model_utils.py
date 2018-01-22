@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from utils.pytorch_modelsize import SizeEstimator
-from sklearn.metrics import precision_recall_fscore_support
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 from datetime import datetime
 from tqdm import tqdm
 
@@ -65,6 +65,10 @@ def benchmark(model, val_dataloader, header):
 
     macro_all = precision_recall_fscore_support(running_labels.numpy(), running_predictions.numpy(), average='macro')
     print('Macro Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(macro_all[0], macro_all[1], macro_all[2]))
+
+    # calculate accuracy
+    accuracy = accuracy_score(running_labels.numpy(), running_predictions.numpy())
+    print('accuracy: {:.4f}'.format(accuracy))
 
     # show time taken for single input
     model = model.cpu()
