@@ -50,9 +50,23 @@ class VGG(models.VGG):
             next_p_conv2d = self.features[min_module_idx+offset+1]
             next_p_conv2d.drop_input_channel(min_map_idx)
 
-
-
 def vgg_model(num_classes):
+
+    def make_layers(cfg, batch_norm=False):
+        layers = []
+        in_channels = 3
+        for v in cfg:
+            if v == 'M':
+                layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+            else:
+                conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
+                if batch_norm:
+                    layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
+                else:
+                    layers += [conv2d, nn.ReLU(inplace=True)]
+                in_channels = v
+            return nn.Sequential(*layers)
+
     cfg = {'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],}
     model_url = 'https://download.pytorch.org/models/vgg11_bn-6002323d.pth'
     model = VGG(make_layers(cfg['A'], batch_norm=True))
@@ -68,22 +82,6 @@ def vgg_model(num_classes):
         nn.Linear(4096, num_classes),
     )
     return model, 'vgg11_bn'
-
-
-def make_layers(cfg, batch_norm=False):
-    layers = []
-    in_channels = 3
-    for v in cfg:
-        if v == 'M':
-            layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
-        else:
-            conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
-            if batch_norm:
-                layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
-            else:
-                layers += [conv2d, nn.ReLU(inplace=True)]
-            in_channels = v
-    return nn.Sequential(*layers)
 
 
 def chinese_model(num_classes):
