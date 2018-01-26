@@ -1,10 +1,8 @@
 from src.nn.models import *
 import src.nn.prunable_nn as pnn
-import torch.nn as nn
 import torch
 from torch.autograd import Variable, backward
 import unittest
-
 
 class TestChineseNet(unittest.TestCase):
 
