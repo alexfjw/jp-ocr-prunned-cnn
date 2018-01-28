@@ -5,7 +5,7 @@ Refer to `capestone_report.pdf` for a complete description of the project.
 
 Benchmark Summary:
 ![](benchmark_summary.png?raw=true)
-Note: size estimate is the raw size estimate for models in Pytorch, inclusive of layer specific details like output cout. Sizes are about halved if only the filters in convolutional & FC layers are considered.
+Note: size estimate is the raw size estimate for models in Pytorch, inclusive of layer specific details like output count. Sizes are about halved if only the filters in convolutional & FC layers are considered.
 
 
 ## Running this project
