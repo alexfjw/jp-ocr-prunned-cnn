@@ -27,8 +27,7 @@ Optional:
 3. onnx-caffe2  
 
 Note that the pytorch code uses cuda for training models.  
-Code was written for cpu only usage, but it has not been tested.  
-Training with CPU has not been tested.  
+Training with CPU has not been tested, but code should support it.  
 
 ## Setup instructions
 Obtain the ETL2 & ETL9G datasets from the following sites.
