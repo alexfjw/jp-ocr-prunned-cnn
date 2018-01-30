@@ -18,6 +18,7 @@ class Etl2Dataset(Dataset):
     """
     images without transform are in greyscale
     mean & std are single channel, and calculated in advance
+    for train set where seed=1 only.
     """
     mean = 29.9074215166
     std = 65.5108579121
@@ -114,11 +115,13 @@ class Etl2Dataset(Dataset):
             pickle.dump(entries, file_handler)
             return entries
 
-    def calculate_mean(self):
-        return np.mean([ImageStat.Stat(image).mean[0] for image, _ in self._entries])
+    def calculate_mean(self, indices):
+        entries = list(self._entries[idx] for idx in indices)
+        return np.mean([ImageStat.Stat(image).mean[0] for image, _ in entries])
 
-    def calculate_std(self):
-        return np.mean([ImageStat.Stat(image).stddev[0] for image, _ in self._entries])
+    def calculate_std(self, indices):
+        entries = list(self._entries[idx] for idx in indices)
+        return np.mean([ImageStat.Stat(image).stddev[0] for image, _ in entries])
 
     def __len__(self):
         def sum_file_count(sum_so_far, file_with_count):
@@ -142,6 +145,7 @@ class Etl9GDataset(Dataset):
     """
     images without transform are in greyscale
     mean & std are single channel, and calculated in advance
+    for train set where seed=1 only.
     """
     mean = 11.3169761515
     std = 39.1004076498
@@ -190,11 +194,13 @@ class Etl9GDataset(Dataset):
 
         return entries
 
-    def calculate_mean(self):
-        return np.mean([ImageStat.Stat(image).mean[0] for image, _ in self._entries])
+    def calculate_mean(self, indices):
+        entries = list(self._entries[idx] for idx in indices)
+        return np.mean([ImageStat.Stat(image).mean[0] for image, _ in entries])
 
-    def calculate_std(self):
-        return np.mean([ImageStat.Stat(image).stddev[0] for image, _ in self._entries])
+    def calculate_std(self, indices):
+        entries = list(self._entries[idx] for idx in indices)
+        return np.mean([ImageStat.Stat(image).stddev[0] for image, _ in entries])
 
     def __len__(self):
         return len(self._entries)

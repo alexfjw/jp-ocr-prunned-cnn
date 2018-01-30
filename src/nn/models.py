@@ -108,7 +108,7 @@ class ChineseNet(nn.Module):
         self.features = self.make_layers()
         self.classifier = nn.Sequential(
             # input is 96x96, output from features section should always be 2x2
-            pnn.PLinear(self.config[-2]*2*2, 1024),
+            nn.Linear(self.config[-2]*2*2, 1024),
             nn.BatchNorm1d(1024),
             nn.PReLU(),
             nn.Dropout(),
@@ -123,8 +123,8 @@ class ChineseNet(nn.Module):
             if v == 'M':
                 layers += [nn.MaxPool2d(kernel_size=3, stride=2)]
             else:
-                conv2d = pnn.PConv2d(in_channels, v, kernel_size=3, padding=1)
-                layers += [conv2d, pnn.PBatchNorm2d(v), nn.PReLU()]
+                conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
+                layers += [conv2d, nn.BatchNorm2d(v), nn.PReLU()]
                 in_channels = v
         return nn.Sequential(*layers)
 
