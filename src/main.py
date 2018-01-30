@@ -50,7 +50,7 @@ def main():
                    f'trained_models/pruned_{args.model}_{args.dataset}_finetune{finetuning_passes}.weights')
 
         # create onnx proto file
-        pytorch_to_onnx(model, Variable(torch.FloatTensor(1, 1, 96, 96)), args.model)
+        # pytorch_to_onnx(model, Variable(torch.FloatTensor(1, 1, 96, 96)), args.model)
 
 
 
